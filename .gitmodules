@@ -1,0 +1,9 @@
+[submodule "Maat-InputHandler"]
+	path = Maat-InputHandler
+	url = https://github.com/lilith645/Maat-InputHandler.git
+[submodule "Maat-Graphics"]
+	path = Maat-Graphics
+	url = https://github.com/lilith645/Maat-Graphics.git
+[submodule "Maat-Sound"]
+	path = Maat-Sound
+	url = https://github.com/lilith645/Maat-Sound.git
