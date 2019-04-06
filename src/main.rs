@@ -49,6 +49,7 @@ fn main() {
   graphics.preload_texture(String::from("Logo"), 
                            String::from("./resources/Textures/Logo.png"));
   
+  graphics.add_model("Hexagon".to_string(), "./windys-modeling-agency/Unfinished/hexagon.glb".to_string());
   
   graphics.load_shaders();
   graphics.init();

@@ -7,3 +7,6 @@
 [submodule "Maat-Sound"]
 	path = Maat-Sound
 	url = https://github.com/lilith645/Maat-Sound.git
+[submodule "windys-modeling-agency"]
+	path = windys-modeling-agency
+	url = https://github.com/Lord-Windy/windys-modeling-agency.git
