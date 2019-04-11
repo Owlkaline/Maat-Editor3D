@@ -1,6 +1,6 @@
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update                 ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libudev-dev    ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq install libudev-dev libopenal-dev libsndfile1-dev   ; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update                               ; fi
 language: rust
 rust:
