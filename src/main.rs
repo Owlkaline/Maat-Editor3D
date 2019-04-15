@@ -21,19 +21,19 @@ const MAJOR: u32 = 0;
 const MINOR: u32 = 1;
 const PATCH: u32 = 0;
 
-fn benchmark(draw_calls: &mut Vec<DrawCall>, dimensions: [f32; 2]) {
-  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(dimensions[0] - 80.0, 15.0), 
+fn benchmark(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>) {
+  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(dimensions.x - 80.0, 15.0), 
                                            Vector2::new(64.0, 64.0), 
                                            Vector4::new(1.0, 1.0, 1.0, 1.0), 
                                            "v".to_string() + &MAJOR.to_string() + "." + &MINOR.to_string() + "." + &PATCH.to_string(), 
                                            "Arial".to_string()));
 }
 
-fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: [f32; 2], fps: f64) {
+fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f64) {
   let  mut fps = fps.to_string();
   fps.truncate(6);
   
-  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(32.0, dimensions[1]-32.0), 
+  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(32.0, dimensions.y-32.0), 
                                            Vector2::new(64.0, 64.0), 
                                            Vector4::new(0.0, 0.0, 0.0, 1.0), 
                                            "fps: ".to_string() + &fps, 
@@ -41,7 +41,7 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: [f32; 2], fps: f64) {
 }
 
 fn main() {
-  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 720.0, true);
+  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 720.0, true).use_imgui();
   
   graphics.preload_font(String::from("Arial"),
                         String::from("./resources/Fonts/TimesNewRoman.png"),
@@ -65,8 +65,6 @@ fn main() {
   
   let mut done = false;
   let mut dimensions;
-  let dpi = 1.0;
-  let mut dpi_changed = false;
   
   let mut frame_counter = 0;
   let mut fps_timer = 0.0;
@@ -84,16 +82,13 @@ fn main() {
       frame_counter = 0;
     }
     
-    dimensions = {
-      let dim = graphics.get_dimensions();
-      [dim.width as f32 * dpi, dim.height as f32  * dpi]
-    };
+    dimensions = graphics.get_virtual_dimensions();
     
     if game.scene_finished() {
-      game = game.future_scene(Vector2::new(dimensions[0], dimensions[1]));
+      game = game.future_scene(dimensions);
     }
     
-    game.set_window_dimensions(Vector2::new(dimensions[0], dimensions[1]));
+    game.set_window_dimensions(dimensions);
     
     game.draw(&mut draw_calls);
     
@@ -113,25 +108,17 @@ fn main() {
       game.add_model_size(reference.to_string(), *size);
     }
     
-    let mut resized = false;
+    let events = graphics.get_events();
+    let mouse_pos = graphics.get_mouse_position();
     
-    let _height = graphics.get_dimensions().height as f32;
-    graphics.get_events().poll_events(|ev| {
-      match ev {
+    game.set_mouse_position(mouse_pos);
+    
+    for ev in events {
+      match &ev {
         winit::Event::WindowEvent{ event, .. } => {
           match event {
-            winit::WindowEvent::Resized(_new_size) => {
-              resized = true;
-            },
-            winit::WindowEvent::CursorMoved{device_id: _, position, modifiers: _} => {
-              game.set_mouse_position(Vector2::new(position.x as f32, dimensions[1] / dpi - position.y as f32));
-            },
             winit::WindowEvent::CloseRequested => {
               done = true;
-            },
-            winit::WindowEvent::HiDpiFactorChanged(new_dpi) => {
-              println!("Dpi Changed: {}", new_dpi);
-              dpi_changed = true;
             },
             _ => {
               if game.handle_input(event) {
@@ -142,14 +129,6 @@ fn main() {
         },
         _ => {},
       }
-    });
-    
-    if dpi_changed {
-      dpi_changed = false;
-    }
-    
-    if resized {
-      graphics.screen_resized();
     }
     
     if done { break; }

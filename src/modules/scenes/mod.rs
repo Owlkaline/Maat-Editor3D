@@ -122,7 +122,7 @@ pub trait Scene {
     self.mut_data().model_sizes.push((reference, size));
   }
   
-  fn handle_input(&mut self, event: winit::WindowEvent) -> bool {
+  fn handle_input(&mut self, event: &winit::WindowEvent) -> bool {
     self.mut_data().released_this_render.clear();
 
 
@@ -146,7 +146,7 @@ pub trait Scene {
           },
           LineDelta(_x, y) => {
             // Scroll Delta is either -1, 0 or 1
-            self.mut_data().scroll_delta = y;
+            self.mut_data().scroll_delta = *y;
           },
         }
       },
@@ -154,9 +154,9 @@ pub trait Scene {
         if character.is_ascii() || character.is_ascii_control() || character.is_ascii_whitespace() {
           let mut string_char = character.to_string();
           
-          if character == '\n' || character == '\r' {
+          if *character == '\n' || *character == '\r' {
             string_char = "Enter".to_string();
-          } else if character == '\x08' {
+          } else if *character == '\x08' {
             string_char = "Backspace".to_string();
           } else if character.is_ascii_control() {
             string_char = "".to_string();
@@ -191,29 +191,29 @@ pub trait Scene {
         }
       },
       winit::WindowEvent::MouseInput {device_id: _, state, button, modifiers: _} =>{
-        if state == winit::ElementState::Pressed {
-          if button == winit::MouseButton::Left {
+        if *state == winit::ElementState::Pressed {
+          if *button == winit::MouseButton::Left {
             self.mut_data().left_mouse = true;
             self.mut_data().left_mouse_dragged = true;
           }
-          if button == winit::MouseButton::Right {
+          if *button == winit::MouseButton::Right {
             self.mut_data().right_mouse = true;
             self.mut_data().right_mouse_dragged = true;
           }
-          if button == winit::MouseButton::Middle {
+          if *button == winit::MouseButton::Middle {
             self.mut_data().middle_mouse = true;
           }
         }
-        if state == winit::ElementState::Released {
-          if button == winit::MouseButton::Left {
+        if *state == winit::ElementState::Released {
+          if *button == winit::MouseButton::Left {
             self.mut_data().left_mouse = false;
             self.mut_data().left_mouse_dragged = false;
           }
-          if button == winit::MouseButton::Right {
+          if *button == winit::MouseButton::Right {
             self.mut_data().right_mouse = false;
             self.mut_data().right_mouse_dragged = false;
           }
-          if button == winit::MouseButton::Middle {
+          if *button == winit::MouseButton::Middle {
             self.mut_data().middle_mouse = false;
             self.mut_data().middle_mouse_dragged = false;
           }
