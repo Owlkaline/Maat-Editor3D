@@ -1,5 +1,6 @@
 use maat_graphics::DrawCall;
 use maat_graphics::camera;
+use maat_graphics::imgui::*;
 
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
@@ -184,11 +185,42 @@ impl Scene for EditorScreen {
     }
   }
   
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>, ui: Option<&Ui>) {
     // Window width and height is 1280 x 720
     //let width = self.data().window_dim.x;
     //let height = self.data().window_dim.y;
     
+    if let Some(ui) = &ui {
+     ui.window(im_str!("Object Details"))
+        .size((300.0, 300.0), ImGuiCond::FirstUseEver)
+         .build(|| {
+            ui.text(im_str!("Hello world!"));
+            ui.text(im_str!("This...is...imgui-rs!"));
+             ui.separator();
+             let mouse_pos = ui.imgui().mouse_pos();
+             ui.text(im_str!(
+                "Mouse Position: ({:.1},{:.1})",
+                mouse_pos.0,
+                mouse_pos.1
+           ));
+           ui.radio_button_bool(im_str!("Slider"), true);
+           ui.same_line(0.0);
+           ui.radio_button_bool(im_str!("Input"), false);
+           
+           ui.text(im_str!("Position: "));
+           ui.same_line(0.0);
+           ui.drag_float(im_str!(""), &mut 0.0).build();
+           ui.same_line(50.0);
+           ui.drag_float(im_str!(""), &mut 1.0).build();
+           ui.same_line(100.0);
+           ui.drag_float(im_str!(""), &mut 2.0).build();
+           
+           ui.separator();
+           ui.input_float(im_str!("size"), &mut 0.1)
+               //.display_format(im_str!("%.0f"))
+               .build();
+        });
+    }
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
     for world_object in &self.world_objects {
       world_object.draw(draw_calls);

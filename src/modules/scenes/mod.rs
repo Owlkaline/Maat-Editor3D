@@ -1,4 +1,5 @@
 use maat_graphics::DrawCall;
+use maat_graphics::imgui::*;
 
 use maat_input_handler::MappedKeys;
 use maat_input_handler::Controller;
@@ -94,13 +95,14 @@ impl SceneData {
   }
 }
 
+
 pub trait Scene {
   fn data(&self) -> &SceneData;
   fn mut_data(&mut self) -> &mut SceneData;
   fn future_scene(&mut self, window_size: Vector2<f32>) -> Box<Scene>;
   
   fn update(&mut self, delta_time: f32);
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>);
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>, ui: Option<&Ui>);
   
   fn scene_finished(&self) -> bool {
     self.data().next_scene

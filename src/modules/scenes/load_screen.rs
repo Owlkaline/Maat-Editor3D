@@ -1,4 +1,5 @@
 use maat_graphics::DrawCall;
+use maat_graphics::imgui::*;
 
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
@@ -55,7 +56,7 @@ impl Scene for LoadScreen {
     self.loop_num += 1;
   }
   
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>, _ui: Option<&Ui>) {
     let dim = self.data().window_dim;
     let (width, height) = (dim.x as f32, dim.y as f32);
     

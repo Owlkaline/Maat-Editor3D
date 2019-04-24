@@ -4,6 +4,8 @@ extern crate maat_input_handler;
 extern crate cgmath;
 extern crate rand;
 
+use maat_graphics::imgui::*;
+
 mod modules;
 
 use crate::modules::scenes::Scene;
@@ -41,7 +43,8 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
 }
 
 fn main() {
-  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, true).use_imgui();
+  let mut imgui = ImGui::init();
+  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, true).use_imgui(&mut imgui);
   
   graphics.preload_font(String::from("Arial"),
                         String::from("./resources/Fonts/TimesNewRoman.png"),
@@ -52,7 +55,6 @@ fn main() {
   graphics.add_model("Hexagon".to_string(), "./windys-modeling-agency/Unfinished/hexagon.glb".to_string());
   
   graphics.load_shaders();
-  graphics.init();
   
   graphics.set_clear_colour(0.2, 0.2, 0.2, 1.0);
   
@@ -90,16 +92,19 @@ fn main() {
     
     game.set_window_dimensions(dimensions);
     
-    //let ui = graphics.imgui_ui(delta_time as f32);
-    game.draw(&mut draw_calls);
+    graphics.init();
     
+    let frame_size = graphics.imgui_window(&mut imgui);
+    let ui = imgui.frame(frame_size, delta_time as f32);
+    
+    game.draw(&mut draw_calls, Some(&ui));
     game.update(delta_time as f32);
     
     benchmark(&mut draw_calls, dimensions);
     fps_overlay(&mut draw_calls, dimensions, last_fps);
     
     let model_details = graphics.pre_draw();
-    graphics.draw(&draw_calls, None, delta_time as f32);
+    graphics.draw(&draw_calls, Some(ui), delta_time as f32);
     graphics.post_draw();
     
     draw_calls.clear();
@@ -109,7 +114,7 @@ fn main() {
       game.add_model_size(reference.to_string(), *size);
     }
     
-    let events = graphics.get_events();
+    let events = graphics.get_events(Some(&mut imgui));
     let mouse_pos = graphics.get_mouse_position();
     
     game.set_mouse_position(mouse_pos);
