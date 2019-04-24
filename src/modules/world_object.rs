@@ -1,4 +1,5 @@
 use maat_graphics::DrawCall;
+use maat_graphics::imgui::*;
 
 use cgmath::Vector3;
 
@@ -28,6 +29,36 @@ impl WorldObject {
   
   pub fn set_position(&mut self, pos: Vector3<f32>) {
     self.position = pos;
+  }
+  
+  pub fn update(&mut self, ui: Option<&Ui>, _delta_time: f32) {
+     if let Some(ui) = &ui {
+       ui.window(im_str!("Object Being Placed"))
+       .size((300.0, 300.0), ImGuiCond::FirstUseEver)
+       .build(|| {
+          ui.text(im_str!(
+            "Position: ({:.1},{:.1},{:.1})",
+            self.position.x,
+            self.position.y,
+            self.position.z,
+         ));
+         ui.text(im_str!(
+            "Rotation: ({:.1},{:.1},{:.1})",
+            self.rotation.x,
+            self.rotation.y,
+            self.rotation.z,
+         ));
+         ui.text(im_str!(
+            "Size: ({:.1},{:.1},{:.1})",
+            self.size.x,
+            self.size.y,
+            self.size.z,
+         ));
+         ui.separator();
+         //.display_format(im_str!("%.0f"))
+        
+      });
+    }
   }
   
   pub fn draw(&self, draw_calls: &mut Vec<DrawCall>) {

@@ -92,13 +92,11 @@ fn main() {
     
     game.set_window_dimensions(dimensions);
     
-    graphics.init();
-    
     let frame_size = graphics.imgui_window(&mut imgui);
     let ui = imgui.frame(frame_size, delta_time as f32);
     
-    game.draw(&mut draw_calls, Some(&ui));
-    game.update(delta_time as f32);
+    game.draw(&mut draw_calls);
+    game.update(Some(&ui), delta_time as f32);
     
     benchmark(&mut draw_calls, dimensions);
     fps_overlay(&mut draw_calls, dimensions, last_fps);

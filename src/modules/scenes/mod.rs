@@ -18,6 +18,11 @@ pub use self::editor_screen::EditorScreen;
 mod load_screen;
 mod editor_screen;
 
+pub struct ImGuiInfo {
+  wants_mouse: bool,
+  wants_keyboard: bool,
+}
+
 pub struct SceneData {
   pub should_close: bool,
   pub next_scene: bool,
@@ -36,6 +41,7 @@ pub struct SceneData {
   pub window_resized: bool,
   pub controller: Controller,
   pub model_sizes: Vec<(String, Vector3<f32>)>,
+  imgui_info: ImGuiInfo,
 }
 
 impl SceneData {
@@ -58,6 +64,7 @@ impl SceneData {
       window_resized: false,
       controller: Controller::new(),
       model_sizes,
+      imgui_info: ImGuiInfo { wants_mouse: false, wants_keyboard: false },
     }
   }
   
@@ -80,6 +87,7 @@ impl SceneData {
       window_resized: false,
       controller: Controller::new(),
       model_sizes: Vec::new(),
+      imgui_info: ImGuiInfo { wants_mouse: false, wants_keyboard: false },
     }
   }
   
@@ -101,8 +109,8 @@ pub trait Scene {
   fn mut_data(&mut self) -> &mut SceneData;
   fn future_scene(&mut self, window_size: Vector2<f32>) -> Box<Scene>;
   
-  fn update(&mut self, delta_time: f32);
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>, ui: Option<&Ui>);
+  fn update(&mut self, ui: Option<&Ui>, delta_time: f32);
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>);
   
   fn scene_finished(&self) -> bool {
     self.data().next_scene

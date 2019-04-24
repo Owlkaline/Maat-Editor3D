@@ -42,7 +42,7 @@ impl Scene for LoadScreen {
     Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
   }
   
-  fn update(&mut self, delta_time: f32) {
+  fn update(&mut self, _ui: Option<&Ui>, delta_time: f32) {
     self.logo_timer -= delta_time as f32;
     self.alpha = 1.0 - (self.logo_timer / (LOGO_TIMER*0.7));
     
@@ -56,7 +56,7 @@ impl Scene for LoadScreen {
     self.loop_num += 1;
   }
   
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>, _ui: Option<&Ui>) {
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
     let dim = self.data().window_dim;
     let (width, height) = (dim.x as f32, dim.y as f32);
     

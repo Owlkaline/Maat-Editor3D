@@ -160,9 +160,14 @@ impl Scene for EditorScreen {
     }
   }
   
-  fn update(&mut self, delta_time: f32) {
+  fn update(&mut self, ui: Option<&Ui>, delta_time: f32) {
     if self.data.window_resized {
       self.data.next_scene = true;
+    }
+    
+    if let Some(ui) = &ui {
+      self.mut_data().imgui_info.wants_mouse = ui.want_capture_mouse();
+      self.mut_data().imgui_info.wants_keyboard = ui.want_capture_keyboard();
     }
     
     let mouse = self.data.mouse_pos;
@@ -183,12 +188,6 @@ impl Scene for EditorScreen {
     if let Some(object) = &mut self.object_being_placed {
       object.set_position(cam_pos.xyz());
     }
-  }
-  
-  fn draw(&self, draw_calls: &mut Vec<DrawCall>, ui: Option<&Ui>) {
-    // Window width and height is 1280 x 720
-    //let width = self.data().window_dim.x;
-    //let height = self.data().window_dim.y;
     
     if let Some(ui) = &ui {
      ui.window(im_str!("Object Details"))
@@ -221,6 +220,17 @@ impl Scene for EditorScreen {
                .build();
         });
     }
+    
+    if let Some(object) = &mut self.object_being_placed {
+      object.update(ui, delta_time);
+    }
+  }
+  
+  fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
+    // Window width and height is 1280 x 720
+    //let width = self.data().window_dim.x;
+    //let height = self.data().window_dim.y;
+    
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
     for world_object in &self.world_objects {
       world_object.draw(draw_calls);
