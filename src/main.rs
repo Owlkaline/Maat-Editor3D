@@ -41,7 +41,7 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
 }
 
 fn main() {
-  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 720.0, true).use_imgui();
+  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, true).use_imgui();
   
   graphics.preload_font(String::from("Arial"),
                         String::from("./resources/Fonts/TimesNewRoman.png"),
@@ -90,6 +90,7 @@ fn main() {
     
     game.set_window_dimensions(dimensions);
     
+    //let ui = graphics.imgui_ui(delta_time as f32);
     game.draw(&mut draw_calls);
     
     game.update(delta_time as f32);
@@ -98,7 +99,7 @@ fn main() {
     fps_overlay(&mut draw_calls, dimensions, last_fps);
     
     let model_details = graphics.pre_draw();
-    graphics.draw(&draw_calls, delta_time as f32);
+    graphics.draw(&draw_calls, None, delta_time as f32);
     graphics.post_draw();
     
     draw_calls.clear();

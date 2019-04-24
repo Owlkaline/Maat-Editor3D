@@ -3,6 +3,7 @@ use maat_graphics::camera;
 
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
+use crate::modules::WorldObject;
 
 use rand;
 use rand::{thread_rng};
@@ -21,7 +22,9 @@ pub struct EditorScreen {
   rng: rand::prelude::ThreadRng,
   camera: camera::Camera,
   last_mouse_pos: Vector2<f32>,
-  // Put new variables you want to use here
+  placing_height: f32,
+  object_being_placed: Option<WorldObject>,
+  world_objects: Vec<WorldObject>,
 }
 
 impl EditorScreen {
@@ -39,33 +42,44 @@ impl EditorScreen {
       rng,
       camera,
       last_mouse_pos: Vector2::new(-1.0, -1.0),
-      // Make sure to initialize new variables here
+      placing_height: 0.0,
+      object_being_placed: None,
+      world_objects: vec!(WorldObject::new_empty(0, "Hexagon".to_string())),
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, placing_height: f32, world_objects: Vec<WorldObject>, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
     EditorScreen {
       data: SceneData::new(window_size, model_sizes),
       rng,
       camera,
       last_mouse_pos: Vector2::new(-1.0, -1.0),
-      // And initialize  new variables here too
+      placing_height,
+      object_being_placed,
+      world_objects,
     }
   }
   
-  pub fn update_keypresses(&mut self, delta_time: f32) {
+  pub fn update_input(&mut self, delta_time: f32) {
+    self.data.controller.update();
+    
     let mouse = self.data.mouse_pos;
     
     let w_pressed = self.data.keys.w_pressed();
     let a_pressed = self.data.keys.a_pressed();
     let s_pressed = self.data.keys.s_pressed();
     let d_pressed = self.data.keys.d_pressed();
-    let r_pressed = self.data().keys.r_pressed();
-    let f_pressed = self.data().keys.f_pressed();
+    let r_pressed = self.data.keys.r_pressed();
+    let f_pressed = self.data.keys.f_pressed();
+    let i_pressed = self.data.keys.i_pressed();
+    let k_pressed = self.data.keys.k_pressed();
+    let one_pressed = self.data.keys.one_pressed();
+    let scroll_delta = self.data.scroll_delta;
     
     let left_clicked = self.data.left_mouse;
+    let right_clicked = self.data.right_mouse;
     
-    if left_clicked {
+    if right_clicked {
       if self.last_mouse_pos != Vector2::new(-1.0, -1.0) {
         let x_offset = self.last_mouse_pos.x - mouse.x;
         let y_offset = mouse.y - self.last_mouse_pos.y;
@@ -91,6 +105,36 @@ impl EditorScreen {
     if f_pressed {
       self.camera.process_movement(camera::Direction::NegativeY, delta_time);
     }
+    if scroll_delta > 0.0 {
+      self.camera.process_movement(camera::Direction::Forward, 10.0*delta_time);
+    } else if scroll_delta < 0.0 {
+      self.camera.process_movement(camera::Direction::Backward, 10.0*delta_time);
+    }
+    if i_pressed {
+      self.placing_height += 10.0*delta_time;
+    }
+    if k_pressed {
+      self.placing_height -= 10.0*delta_time;
+    }
+    
+    if left_clicked {
+      if let Some(object) = &self.object_being_placed {
+        self.world_objects.push(object.clone());
+      }
+      self.object_being_placed = None;
+    }
+    
+    if one_pressed {
+      let id = { 
+        if self.world_objects.len() > 0 {
+          self.world_objects[self.world_objects.len()-1].id()
+        } else {
+          0
+        }
+      };
+      
+      self.object_being_placed = Some(WorldObject::new_empty(id, "Hexagon".to_string()));
+    }
     
     self.last_mouse_pos = mouse;
   }
@@ -107,7 +151,9 @@ impl Scene for EditorScreen {
   
   fn future_scene(&mut self, window_size: Vector2<f32>) -> Box<Scene> {
     if self.data().window_resized {
-      Box::new(EditorScreen::new_with_data(window_size, self.rng.clone(), self.camera.clone(), self.data.model_sizes.clone()))
+      Box::new(EditorScreen::new_with_data(window_size, self.rng.clone(), self.camera.clone(), 
+                                           self.object_being_placed.clone(), self.placing_height, 
+                                           self.world_objects.clone(), self.data.model_sizes.clone()))
     } else {
       Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
     }
@@ -118,9 +164,24 @@ impl Scene for EditorScreen {
       self.data.next_scene = true;
     }
     
-    self.mut_data().controller.update();
+    let mouse = self.data.mouse_pos;
     
-    self.update_keypresses(delta_time);
+    self.update_input(delta_time);
+    
+    let mut cam_pos = self.camera.get_position();
+    let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
+    if mouse_ray.y < 0.0 {
+      while cam_pos.y > 0.0  {
+        cam_pos += mouse_ray;
+      }
+      // TODO: align with goal height
+      cam_pos -= mouse_ray;
+      cam_pos.y = self.placing_height;
+    }
+    
+    if let Some(object) = &mut self.object_being_placed {
+      object.set_position(cam_pos.xyz());
+    }
   }
   
   fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
@@ -129,11 +190,12 @@ impl Scene for EditorScreen {
     //let height = self.data().window_dim.y;
     
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
+    for world_object in &self.world_objects {
+      world_object.draw(draw_calls);
+    }
     
-    draw_calls.push(DrawCall::draw_model(Vector3::new(0.0, 0.0, 0.0),
-                                           Vector3::new(1.0, 1.0, 1.0),
-                                           Vector3::new(0.0, 90.0, 0.0),
-                                           "Hexagon".to_string()));
-    
+    if let Some(object) = &self.object_being_placed {
+      object.draw(draw_calls);
+    }
   }
 }
