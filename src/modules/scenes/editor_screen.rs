@@ -5,6 +5,7 @@ use maat_graphics::imgui::*;
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
 use crate::modules::WorldObject;
+use crate::modules::import_export::{import, export};
 
 use rand;
 use rand::{thread_rng};
@@ -18,6 +19,11 @@ const CAMERA_DEFAULT_PITCH: f32 = -62.27426;
 const CAMERA_DEFAULT_YAW: f32 = 210.10083;
 const CAMERA_DEFAULT_SPEED: f32 = 50.0;
 
+enum MouseState {
+  Ui,
+  World,
+}
+
 pub struct EditorScreen {
   data: SceneData,
   rng: rand::prelude::ThreadRng,
@@ -26,6 +32,8 @@ pub struct EditorScreen {
   placing_height: f32,
   object_being_placed: Option<WorldObject>,
   world_objects: Vec<WorldObject>,
+  mouse_state: MouseState,
+  selected_model: i32,
 }
 
 impl EditorScreen {
@@ -46,6 +54,8 @@ impl EditorScreen {
       placing_height: 0.0,
       object_being_placed: None,
       world_objects: vec!(WorldObject::new_empty(0, "Hexagon".to_string())),
+      mouse_state: MouseState::World,
+      selected_model: 0,
     }
   }
   
@@ -58,6 +68,8 @@ impl EditorScreen {
       placing_height,
       object_being_placed,
       world_objects,
+      mouse_state: MouseState::World,
+      selected_model: 0,
     }
   }
   
@@ -75,12 +87,15 @@ impl EditorScreen {
     let i_pressed = self.data.keys.i_pressed();
     let k_pressed = self.data.keys.k_pressed();
     let one_pressed = self.data.keys.one_pressed();
+    let two_pressed = self.data.keys.two_pressed();
+    let three_pressed = self.data.keys.three_pressed();
     let scroll_delta = self.data.scroll_delta;
     
     let left_clicked = self.data.left_mouse;
     let right_clicked = self.data.right_mouse;
     
     if right_clicked {
+      self.object_being_placed = None;
       if self.last_mouse_pos != Vector2::new(-1.0, -1.0) {
         let x_offset = self.last_mouse_pos.x - mouse.x;
         let y_offset = mouse.y - self.last_mouse_pos.y;
@@ -128,13 +143,22 @@ impl EditorScreen {
     if one_pressed {
       let id = { 
         if self.world_objects.len() > 0 {
-          self.world_objects[self.world_objects.len()-1].id()
+          self.world_objects[self.world_objects.len()-1].id()+1
         } else {
           0
         }
       };
       
-      self.object_being_placed = Some(WorldObject::new_empty(id, "Hexagon".to_string()));
+      let (model_name, _) = self.data().model_sizes[self.selected_model as usize].clone();
+      self.object_being_placed = Some(WorldObject::new_empty(id, model_name));
+    }
+    
+    if two_pressed {
+      export(&self.world_objects);
+    }
+    
+    if three_pressed {
+      self.world_objects = import();
     }
     
     self.last_mouse_pos = mouse;
@@ -168,61 +192,60 @@ impl Scene for EditorScreen {
     if let Some(ui) = &ui {
       self.mut_data().imgui_info.wants_mouse = ui.want_capture_mouse();
       self.mut_data().imgui_info.wants_keyboard = ui.want_capture_keyboard();
+      /*
+      ui.main_menu_bar(|| {
+        ui.menu(im_str!("Test Menu")).build(|| {
+          ui.menu_item(im_str!("I am Item")).build();
+          ui.menu_item(im_str!("NO, I am Item")).build();
+        });
+      });*/
+      
+      
+      ui.window(im_str!("Avalible Models"))
+       .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+       //.always_auto_resize(true)
+       .build(|| {
+         for i in 0..self.data().model_sizes.len() {
+           let (reference, _) = self.data().model_sizes[i].clone();
+           let name = (reference.to_string()).to_owned();
+           ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
+         }
+       });
+    }
+    
+    if self.data().imgui_info.wants_mouse {
+      self.mouse_state = MouseState::Ui;
+    } else {
+      self.mouse_state = MouseState::World;
     }
     
     let mouse = self.data.mouse_pos;
     
-    self.update_input(delta_time);
-    
-    let mut cam_pos = self.camera.get_position();
-    let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
-    if mouse_ray.y < 0.0 {
-      while cam_pos.y > 0.0  {
-        cam_pos += mouse_ray;
+    match self.mouse_state {
+      MouseState::Ui => {
+        
+      },
+      MouseState::World => {
+        self.update_input(delta_time);
+        let mut cam_pos = self.camera.get_position();
+        let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
+        if mouse_ray.y < 0.0 {
+          while cam_pos.y > 0.0  {
+            cam_pos += mouse_ray;
+          }
+          // TODO: align with goal height
+          cam_pos -= mouse_ray;
+          cam_pos.y = self.placing_height;
+        }
+        
+        if let Some(object) = &mut self.object_being_placed {
+          object.set_position(cam_pos.xyz());
+        }
       }
-      // TODO: align with goal height
-      cam_pos -= mouse_ray;
-      cam_pos.y = self.placing_height;
     }
     
     if let Some(object) = &mut self.object_being_placed {
-      object.set_position(cam_pos.xyz());
-    }
-    
-    if let Some(ui) = &ui {
-     ui.window(im_str!("Object Details"))
-        .size((300.0, 300.0), ImGuiCond::FirstUseEver)
-         .build(|| {
-            ui.text(im_str!("Hello world!"));
-            ui.text(im_str!("This...is...imgui-rs!"));
-             ui.separator();
-             let mouse_pos = ui.imgui().mouse_pos();
-             ui.text(im_str!(
-                "Mouse Position: ({:.1},{:.1})",
-                mouse_pos.0,
-                mouse_pos.1
-           ));
-           ui.radio_button_bool(im_str!("Slider"), true);
-           ui.same_line(0.0);
-           ui.radio_button_bool(im_str!("Input"), false);
-           
-           ui.text(im_str!("Position: "));
-           ui.same_line(0.0);
-           ui.drag_float(im_str!(""), &mut 0.0).build();
-           ui.same_line(50.0);
-           ui.drag_float(im_str!(""), &mut 1.0).build();
-           ui.same_line(100.0);
-           ui.drag_float(im_str!(""), &mut 2.0).build();
-           
-           ui.separator();
-           ui.input_float(im_str!("size"), &mut 0.1)
-               //.display_format(im_str!("%.0f"))
-               .build();
-        });
-    }
-    
-    if let Some(object) = &mut self.object_being_placed {
-      object.update(ui, delta_time);
+      object.update(ui, self.data.window_dim, delta_time);
     }
   }
   

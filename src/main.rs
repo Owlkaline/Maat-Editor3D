@@ -3,6 +3,7 @@ extern crate maat_graphics;
 extern crate maat_input_handler;
 extern crate cgmath;
 extern crate rand;
+extern crate csv;
 
 use maat_graphics::imgui::*;
 
@@ -53,6 +54,9 @@ fn main() {
                            String::from("./resources/Textures/Logo.png"));
   
   graphics.add_model("Hexagon".to_string(), "./windys-modeling-agency/Unfinished/hexagon.glb".to_string());
+  graphics.add_model("Fridge".to_string(), "./windys-modeling-agency/Unfinished/Fridge.glb".to_string());
+  graphics.add_model("Lance".to_string(), "./windys-modeling-agency/Unfinished/Lance.glb".to_string());
+  graphics.add_model("Chair".to_string(), "./windys-modeling-agency/Unfinished/chair-1stattempt.glb".to_string());
   
   graphics.load_shaders();
   
