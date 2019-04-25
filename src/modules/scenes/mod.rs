@@ -42,6 +42,8 @@ pub struct SceneData {
   pub controller: Controller,
   pub model_sizes: Vec<(String, Vector3<f32>)>,
   imgui_info: ImGuiInfo,
+  models_to_load: Vec<(String, String)>,
+  models_to_unload: Vec<String>,
 }
 
 impl SceneData {
@@ -65,6 +67,8 @@ impl SceneData {
       controller: Controller::new(),
       model_sizes,
       imgui_info: ImGuiInfo { wants_mouse: false, wants_keyboard: false },
+      models_to_load: Vec::new(),
+      models_to_unload: Vec::new(),
     }
   }
   
@@ -88,6 +92,8 @@ impl SceneData {
       controller: Controller::new(),
       model_sizes: Vec::new(),
       imgui_info: ImGuiInfo { wants_mouse: false, wants_keyboard: false },
+      models_to_load: Vec::new(),
+      models_to_unload: Vec::new(),
     }
   }
   
@@ -118,6 +124,33 @@ pub trait Scene {
   
   fn reset_scroll_value(&mut self) {
     self.mut_data().scroll_delta = 0.0;
+  }
+  
+  fn get_models_to_load(&mut self) -> Vec<(String, String)> {
+    let models = self.data().models_to_load.clone();
+    self.mut_data().models_to_load = Vec::new();
+    
+    models
+  }
+  
+  fn get_models_to_unload(&mut self) -> Vec<String> {
+    let mut idxs = Vec::new();
+    for i in 0..self.data().models_to_unload.len() {
+      for j in 0..self.data().model_sizes.len() {
+        if self.data().model_sizes[j].0 == self.data().models_to_unload[i] {
+          idxs.push(j);
+        }
+      }
+    }
+    
+    for i in 0..idxs.len() {
+      self.mut_data().model_sizes.remove(idxs[i]-i);
+    }
+    
+    let models = self.data().models_to_unload.clone();
+    self.mut_data().models_to_unload = Vec::new();
+    
+    models
   }
   
   fn set_window_dimensions(&mut self, new_dim: Vector2<f32>) {

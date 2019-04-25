@@ -36,7 +36,7 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
   let  mut fps = fps.to_string();
   fps.truncate(6);
   
-  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(32.0, dimensions.y-32.0), 
+  draw_calls.push(DrawCall::draw_text_basic(Vector2::new(32.0, dimensions.y-48.0), 
                                            Vector2::new(64.0, 64.0), 
                                            Vector4::new(0.0, 0.0, 0.0, 1.0), 
                                            "fps: ".to_string() + &fps, 
@@ -52,11 +52,6 @@ fn main() {
                         include_bytes!("../resources/Fonts/TimesNewRoman.fnt"));
   graphics.preload_texture(String::from("Logo"), 
                            String::from("./resources/Textures/Logo.png"));
-  
-  graphics.add_model("Hexagon".to_string(), "./windys-modeling-agency/Unfinished/hexagon.glb".to_string());
-  graphics.add_model("Fridge".to_string(), "./windys-modeling-agency/Unfinished/Fridge.glb".to_string());
-  graphics.add_model("Lance".to_string(), "./windys-modeling-agency/Unfinished/Lance.glb".to_string());
-  graphics.add_model("Chair".to_string(), "./windys-modeling-agency/Unfinished/chair-1stattempt.glb".to_string());
   
   graphics.load_shaders();
   
@@ -89,6 +84,17 @@ fn main() {
     }
     
     dimensions = graphics.get_virtual_dimensions();
+    
+    let models = game.get_models_to_unload();
+    for reference in &models {
+      draw_calls.push(DrawCall::unload_model(reference.to_string()));
+    }
+    
+    let models = game.get_models_to_load();
+    for (reference, location) in &models {
+      graphics.add_model(reference.to_string(), location.to_string());
+      draw_calls.push(DrawCall::load_model(reference.to_string()));
+    }
     
     if game.scene_finished() {
       game = game.future_scene(dimensions);

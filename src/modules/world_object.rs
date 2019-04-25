@@ -7,6 +7,7 @@ use cgmath::{Vector2, Vector3};
 pub struct WorldObject {
   reference_num: u32,
   model: String,
+  location: String,
   position: Vector3<f32>,
   rotation: Vector3<f32>,
   size: Vector3<f32>,
@@ -16,10 +17,11 @@ pub struct WorldObject {
 }
 
 impl WorldObject {
-  pub fn new_empty(reference_num: u32, model: String) -> WorldObject {
+  pub fn new_empty(reference_num: u32, model: String, location: String) -> WorldObject {
     WorldObject {
       reference_num,
       model,
+      location,
       position: Vector3::new(0.0, 0.0, 0.0),
       rotation: Vector3::new(0.0, 0.0, 0.0),
       size: Vector3::new(1.0, 1.0, 1.0),
@@ -29,10 +31,11 @@ impl WorldObject {
     }
   }
   
-  pub fn new(reference_num: u32, model: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+  pub fn new(reference_num: u32, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
     WorldObject {
       reference_num,
       model,
+      location,
       position,
       rotation,
       size,
@@ -48,6 +51,10 @@ impl WorldObject {
   
   pub fn model(&self) -> String {
     self.model.to_string()
+  }
+  
+  pub fn location(&self) -> String {
+    self.location.to_string()
   }
   
   pub fn position(&self) -> Vector3<f32> {
@@ -71,7 +78,7 @@ impl WorldObject {
        let ui_window_size = (450.0, 200.0);
        ui.window(im_str!("Object Being Placed"))
        .size(ui_window_size, ImGuiCond::FirstUseEver)
-       .position((window_dim.x-ui_window_size.0, 0.0), ImGuiCond::FirstUseEver)
+       .position((window_dim.x-ui_window_size.0-20.0, 432.0), ImGuiCond::FirstUseEver)
        //.always_auto_resize(true)
        .build(|| {
           ui.text(im_str!(

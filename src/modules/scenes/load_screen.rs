@@ -61,10 +61,7 @@ impl Scene for LoadScreen {
     let (width, height) = (dim.x as f32, dim.y as f32);
     
     if self.first_loop {
-      draw_calls.push(DrawCall::load_model("Hexagon".to_string()));
-      draw_calls.push(DrawCall::load_model("Fridge".to_string()));
-      draw_calls.push(DrawCall::load_model("Lance".to_string()));
-      draw_calls.push(DrawCall::load_model("Chair".to_string()));
+      //.draw_calls.push(DrawCall::load_model("Hexagon".to_string()));
     }
     
     draw_calls.push(DrawCall::set_texture_scale(1.0));
