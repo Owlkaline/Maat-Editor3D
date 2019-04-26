@@ -40,6 +40,7 @@ pub struct EditorScreen {
   window_unloaded_models: bool,
   window_world_objects: bool,
   known_models: Vec<(String, String, bool)>,
+  show_axis: bool,
 }
 
 impl EditorScreen {
@@ -67,6 +68,7 @@ impl EditorScreen {
       window_unloaded_models: true,
       window_world_objects: true,
       known_models: import_export::get_models(),
+      show_axis: true,
     }
   }
   
@@ -86,6 +88,7 @@ impl EditorScreen {
       window_unloaded_models,
       window_world_objects,
       known_models: import_export::get_models(),
+      show_axis: true,
     }
   }
   
@@ -237,6 +240,7 @@ impl Scene for EditorScreen {
         });
         ui.menu(im_str!("Edit Options")).build(|| {
           ui.menu_item(im_str!("Mouse Placement")).shortcut(im_str!("Ctrl+M")).selected(&mut self.mouse_placement).build();
+          ui.menu_item(im_str!("Show Axis")).shortcut(im_str!("Ctrl+A")).selected(&mut self.show_axis).build();
         });
         ui.menu(im_str!("Windows")).build(|| {
           ui.menu_item(im_str!("Model List")).selected(&mut self.window_unloaded_models).build();
@@ -403,23 +407,25 @@ impl Scene for EditorScreen {
       object.draw(draw_calls);
     }
     
-    let axis_position = Vector3::new(0.0, 0.0, 0.0);
-    let axis_size = Vector3::new(50.0, 10.0, 10.0);
-    let rot_x_size = Vector3::new(0.0, 0.0, 0.0);
-    let rot_y_size = Vector3::new(0.0, 0.0, 90.0);
-    let rot_z_size = Vector3::new(0.0, 90.0, 0.0);
-    let axis = String::from("Axis");
-    draw_calls.push(DrawCall::draw_model(axis_position,
-                                         axis_size,
-                                         rot_x_size,
-                                         axis.to_string()));
-    draw_calls.push(DrawCall::draw_model(axis_position,
-                                         axis_size,
-                                         rot_y_size,
-                                         axis.to_string()));
-    draw_calls.push(DrawCall::draw_model(axis_position,
-                                         axis_size,
-                                         rot_z_size,
-                                         axis.to_string()));
+    if self.show_axis {
+      let axis_position = Vector3::new(0.0, 0.0, 0.0);
+      let axis_size = Vector3::new(50.0, 10.0, 10.0);
+      let rot_x_size = Vector3::new(0.0, 0.0, 0.0);
+      let rot_y_size = Vector3::new(0.0, 0.0, 90.0);
+      let rot_z_size = Vector3::new(0.0, 90.0, 0.0);
+      let axis = String::from("Axis");
+      draw_calls.push(DrawCall::draw_model(axis_position,
+                                           axis_size,
+                                           rot_x_size,
+                                           axis.to_string()));
+      draw_calls.push(DrawCall::draw_model(axis_position,
+                                           axis_size,
+                                           rot_y_size,
+                                           axis.to_string()));
+      draw_calls.push(DrawCall::draw_model(axis_position,
+                                           axis_size,
+                                           rot_z_size,
+                                           axis.to_string()));
+    }
   }
 }
