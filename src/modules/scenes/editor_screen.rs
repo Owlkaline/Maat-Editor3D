@@ -110,6 +110,7 @@ impl EditorScreen {
     
     if right_clicked {
       self.object_being_placed = None;
+      self.object_selected = 0;
       if self.last_mouse_pos != Vector2::new(-1.0, -1.0) {
         let x_offset = self.last_mouse_pos.x - mouse.x;
         let y_offset = mouse.y - self.last_mouse_pos.y;
@@ -275,15 +276,15 @@ impl Scene for EditorScreen {
             }
           });
       }
-      if self.object_selected == 0 {
-        self.object_being_placed = None;
-      }
+      
       if self.object_selected == 1 {
         if self.data.model_sizes.len() == 0 {
           self.object_selected = 0;
         } else if self.object_being_placed.is_none() {
           self.change_selected_object();
         }
+      } else {
+        self.object_being_placed = None;
       }
       
       if self.window_unloaded_models {
@@ -401,5 +402,24 @@ impl Scene for EditorScreen {
     if let Some(object) = &self.object_being_placed {
       object.draw(draw_calls);
     }
+    
+    let axis_position = Vector3::new(0.0, 0.0, 0.0);
+    let axis_size = Vector3::new(50.0, 10.0, 10.0);
+    let rot_x_size = Vector3::new(0.0, 0.0, 0.0);
+    let rot_y_size = Vector3::new(0.0, 0.0, 90.0);
+    let rot_z_size = Vector3::new(0.0, 90.0, 0.0);
+    let axis = String::from("Axis");
+    draw_calls.push(DrawCall::draw_model(axis_position,
+                                         axis_size,
+                                         rot_x_size,
+                                         axis.to_string()));
+    draw_calls.push(DrawCall::draw_model(axis_position,
+                                         axis_size,
+                                         rot_y_size,
+                                         axis.to_string()));
+    draw_calls.push(DrawCall::draw_model(axis_position,
+                                         axis_size,
+                                         rot_z_size,
+                                         axis.to_string()));
   }
 }

@@ -53,6 +53,8 @@ fn main() {
   graphics.preload_texture(String::from("Logo"), 
                            String::from("./resources/Textures/Logo.png"));
   
+  graphics.add_model(String::from("Axis"), String::from("./Models/Axis.glb"));
+  
   graphics.load_shaders();
   
   graphics.set_clear_colour(0.2, 0.2, 0.2, 1.0);
