@@ -7,8 +7,8 @@ edition = "2018"
 [dependencies]
 maat_graphics = { path = "./Maat-Graphics/" }
 maat_input_handler = { path = "./Maat-InputHandler/" }
-maat_sound = { path = "./Maat-Sound/" }
-winit = "0.18.1"
+#maat_sound = { path = "./Maat-Sound/" }
+winit = "0.19.1"
 rand = "0.6"
 csv = "1"
 

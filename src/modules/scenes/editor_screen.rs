@@ -41,6 +41,7 @@ pub struct EditorScreen {
   window_world_objects: bool,
   known_models: Vec<(String, String, bool)>,
   show_axis: bool,
+  snap_to_grid: bool,
 }
 
 impl EditorScreen {
@@ -69,10 +70,11 @@ impl EditorScreen {
       window_world_objects: true,
       known_models: import_export::get_models(),
       show_axis: true,
+      snap_to_grid: true,
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, placing_height: f32, world_objects: Vec<WorldObject>, mouse_placement: bool, window_unloaded_models: bool, window_world_objects: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, placing_height: f32, world_objects: Vec<WorldObject>, mouse_placement: bool, window_unloaded_models: bool, window_world_objects: bool, snap_to_grid: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
     EditorScreen {
       data: SceneData::new(window_size, model_sizes),
       rng,
@@ -89,6 +91,7 @@ impl EditorScreen {
       window_world_objects,
       known_models: import_export::get_models(),
       show_axis: true,
+      snap_to_grid,
     }
   }
   
@@ -203,7 +206,7 @@ impl Scene for EditorScreen {
                                            self.object_being_placed.clone(), self.placing_height, 
                                            self.world_objects.clone(), self.mouse_placement, 
                                            self.window_unloaded_models, self. window_world_objects, 
-                                           self.data.model_sizes.clone()))
+                                           self.snap_to_grid, self.data.model_sizes.clone()))
     } else {
       Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
     }
@@ -241,6 +244,7 @@ impl Scene for EditorScreen {
         ui.menu(im_str!("Edit Options")).build(|| {
           ui.menu_item(im_str!("Mouse Placement")).shortcut(im_str!("Ctrl+M")).selected(&mut self.mouse_placement).build();
           ui.menu_item(im_str!("Show Axis")).shortcut(im_str!("Ctrl+A")).selected(&mut self.show_axis).build();
+          ui.menu_item(im_str!("Snap to grid")).shortcut(im_str!("Ctrl+G")).selected(&mut self.snap_to_grid).build();
         });
         ui.menu(im_str!("Windows")).build(|| {
           ui.menu_item(im_str!("Model List")).selected(&mut self.window_unloaded_models).build();
@@ -378,6 +382,11 @@ impl Scene for EditorScreen {
           }
           
           if let Some(object) = &mut self.object_being_placed {
+            if self.snap_to_grid {
+              cam_pos.x = cam_pos.x.round();
+              cam_pos.y = cam_pos.y.round();
+              cam_pos.z = cam_pos.z.round();
+            }
             object.set_position(cam_pos.xyz());
           }
         }
