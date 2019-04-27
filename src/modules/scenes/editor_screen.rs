@@ -65,12 +65,12 @@ impl EditorScreen {
       mouse_state: MouseState::World,
       selected_model: 0,
       object_selected: 0,
-      mouse_placement: true,
+      mouse_placement: false,
       window_unloaded_models: true,
       window_world_objects: true,
       known_models: import_export::get_models(),
       show_axis: true,
-      snap_to_grid: true,
+      snap_to_grid: false,
     }
   }
   
@@ -106,8 +106,14 @@ impl EditorScreen {
     let d_pressed = self.data.keys.d_pressed();
     let r_pressed = self.data.keys.r_pressed();
     let f_pressed = self.data.keys.f_pressed();
+    
+    let u_pressed = self.data.keys.u_pressed();
+    let j_pressed = self.data.keys.j_pressed();
     let i_pressed = self.data.keys.i_pressed();
     let k_pressed = self.data.keys.k_pressed();
+    let o_pressed = self.data.keys.o_pressed();
+    let l_pressed = self.data.keys.l_pressed();
+    
     let one_pressed = self.data.keys.one_pressed();
     let scroll_delta = self.data.scroll_delta;
     
@@ -147,11 +153,56 @@ impl EditorScreen {
     } else if scroll_delta < 0.0 {
       self.camera.process_movement(camera::Direction::Backward, 10.0*delta_time);
     }
-    if i_pressed {
-      self.placing_height += 10.0*delta_time;
-    }
-    if k_pressed {
-      self.placing_height -= 10.0*delta_time;
+    
+    if self.object_selected > 0 {
+      let mut pos = {
+        if self.object_selected == 1 {
+          let mut pos = Vector3::new(0.0, 0.0, 0.0);
+          if let Some(object) = &self.object_being_placed {
+            pos = object.position();
+          }
+          pos
+        } else {
+          self.world_objects[self.object_selected as usize-2].position()
+        }
+      };
+      
+      if u_pressed {
+        pos.x += 5.0*delta_time;
+      }
+      if j_pressed {
+        pos.x -= 5.0*delta_time;
+      }
+       if o_pressed {
+        pos.z += 5.0*delta_time;
+      }
+      if l_pressed {
+        pos.z -= 5.0*delta_time;
+      }
+      
+      if self.mouse_placement {
+        if i_pressed {
+          self.placing_height += 5.0*delta_time;
+        }
+        if k_pressed {
+          self.placing_height -= 5.0*delta_time;
+        }
+      } else {
+        if i_pressed {
+          pos.y += 5.0*delta_time;
+        }
+        if k_pressed {
+          pos.y -= 5.0*delta_time;
+        }
+      }
+      
+      if self.object_selected == 1 {
+        if let Some(object) = &mut self.object_being_placed {
+          object.set_position(pos);
+        }
+      } else {
+        self.world_objects[self.object_selected as usize-2].set_position(pos);
+      }
     }
     
     if left_clicked {
@@ -277,10 +328,20 @@ impl Scene for EditorScreen {
             ui.text("Placing New");
             ui.same_line(0.0);
             ui.radio_button(im_str!("Key 1##{}", 1), &mut self.object_selected, 1);
+            let mut should_delete_object = false;
             for i in 0..self.world_objects.len() {
               ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].model()));
               ui.same_line(0.0);
               ui.radio_button(im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
+              if self.object_selected == i as i32 +2 {
+                ui.same_line(0.0);
+                should_delete_object = ui.button(im_str!("Delete"), (0.0,0.0));
+              }
+            }
+            
+            if should_delete_object {
+              self.world_objects.remove(self.object_selected as usize-2);
+              self.object_selected = 0;
             }
           });
       }

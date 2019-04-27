@@ -45,7 +45,7 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
 
 fn main() {
   let mut imgui = ImGui::init();
-  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, true).use_imgui(&mut imgui);
+  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, false).use_imgui(&mut imgui);
   
   graphics.preload_font(String::from("Arial"),
                         String::from("./resources/Fonts/TimesNewRoman.png"),
