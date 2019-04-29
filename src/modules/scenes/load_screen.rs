@@ -5,6 +5,8 @@ use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
 use crate::modules::scenes::EditorScreen;
 
+use hlua::Lua;
+
 use cgmath::{Vector2, Vector4};
 
 const LOGO_TIMER: f32 = 1.5;
@@ -42,7 +44,7 @@ impl Scene for LoadScreen {
     Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
   }
   
-  fn update(&mut self, _ui: Option<&Ui>, delta_time: f32) {
+  fn update(&mut self, _ui: Option<&Ui>, _lua: Option<&mut Lua>, delta_time: f32) {
     self.logo_timer -= delta_time as f32;
     self.alpha = 1.0 - (self.logo_timer / (LOGO_TIMER*0.7));
     

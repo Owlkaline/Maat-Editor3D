@@ -12,7 +12,6 @@ winit = "0.19.1"
 rand = "0.6"
 csv = "1"
 hlua = "0.3"
-wren = "0.1.12"
 
 [dependencies.cgmath]
 version = "0.17.0"

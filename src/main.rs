@@ -5,11 +5,9 @@ extern crate cgmath;
 extern crate rand;
 extern crate csv;
 extern crate hlua;
-extern crate wren;
 
-use wren::{Configuration, VM};
 use hlua::Lua;
-
+use std::ffi::c_void;
 use maat_graphics::imgui::*;
 
 mod modules;
@@ -65,7 +63,7 @@ fn main() {
   //lua.execute::<()>("x = x + 1").unwrap();
   let x: i32 = lua.get("x").unwrap();  // x is equal to 3
   println!("lua x: {}", x);
-  
+  /*
   let cfg = Configuration::new();
   let mut vm = VM::new(cfg);
   
@@ -79,7 +77,7 @@ fn main() {
   vm.set_slot_double(0, 2.0);
   vm.call(&update);
   let x = vm.get_slot_double(0).unwrap();
-  println!("wren x: {:?}", x);
+  println!("wren x: {:?}", x);*/
   
   let mut imgui = ImGui::init();
   let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 1080.0, false).use_imgui(&mut imgui);
@@ -145,7 +143,7 @@ fn main() {
     let ui = imgui.frame(frame_size, delta_time as f32);
     
     game.draw(&mut draw_calls);
-    game.update(Some(&ui), delta_time as f32);
+    game.update(Some(&ui),  Some(&mut lua), delta_time as f32);
     
     benchmark(&mut draw_calls, dimensions);
     fps_overlay(&mut draw_calls, dimensions, last_fps);

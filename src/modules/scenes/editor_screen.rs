@@ -2,6 +2,8 @@ use maat_graphics::DrawCall;
 use maat_graphics::camera;
 use maat_graphics::imgui::*;
 
+use hlua::Lua;
+
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
 use crate::modules::WorldObject;
@@ -42,6 +44,7 @@ pub struct EditorScreen {
   known_models: Vec<(String, String, bool)>,
   show_axis: bool,
   snap_to_grid: bool,
+  run_game: bool,
 }
 
 impl EditorScreen {
@@ -71,10 +74,11 @@ impl EditorScreen {
       known_models: import_export::get_models(),
       show_axis: true,
       snap_to_grid: false,
+      run_game: false,
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, placing_height: f32, world_objects: Vec<WorldObject>, mouse_placement: bool, window_unloaded_models: bool, window_world_objects: bool, snap_to_grid: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, placing_height: f32, world_objects: Vec<WorldObject>, mouse_placement: bool, window_unloaded_models: bool, window_world_objects: bool, snap_to_grid: bool, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
     EditorScreen {
       data: SceneData::new(window_size, model_sizes),
       rng,
@@ -92,6 +96,7 @@ impl EditorScreen {
       known_models: import_export::get_models(),
       show_axis: true,
       snap_to_grid,
+      run_game,
     }
   }
   
@@ -113,6 +118,8 @@ impl EditorScreen {
     let k_pressed = self.data.keys.k_pressed();
     let o_pressed = self.data.keys.o_pressed();
     let l_pressed = self.data.keys.l_pressed();
+    
+    let f6_pressed = self.data.keys.f6_pressed();
     
     let one_pressed = self.data.keys.one_pressed();
     let scroll_delta = self.data.scroll_delta;
@@ -272,22 +279,21 @@ impl Scene for EditorScreen {
                                            self.object_being_placed.clone(), self.placing_height, 
                                            self.world_objects.clone(), self.mouse_placement, 
                                            self.window_unloaded_models, self. window_world_objects, 
-                                           self.snap_to_grid, self.data.model_sizes.clone()))
+                                           self.snap_to_grid, self.run_game, self.data.model_sizes.clone()))
     } else {
       Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
     }
   }
   
-  fn update(&mut self, ui: Option<&Ui>, delta_time: f32) {
+  fn update(&mut self, ui: Option<&Ui>, mut lua: Option<&mut Lua>, delta_time: f32) {
     if self.data.window_resized {
       self.data.next_scene = true;
     }
     
-    for i in 0..self.data.model_sizes.len() {
-      for j in 0..self.known_models.len() {
-        if self.data.model_sizes[i].0 == self.known_models[j].0 {
-          self.known_models[j].2 = true;
-        }
+    {
+      let f6_pressed = self.data().keys.f6_pressed();
+      if f6_pressed{
+        self.run_game = !self.run_game;
       }
     }
     
@@ -332,149 +338,172 @@ impl Scene for EditorScreen {
       if should_exit {
         self.data.should_close = true;
       }
-      
-      if self.window_world_objects {
-        ui.window(im_str!("World Objects"))
-          .size((200.0, 400.0), ImGuiCond::FirstUseEver)
-          .build(|| {
-            ui.text("None");
-            ui.same_line(0.0);
-            ui.radio_button(im_str!("##{}", 0), &mut self.object_selected, 0);
-            ui.text("Placing New");
-            ui.same_line(0.0);
-            ui.radio_button(im_str!("Key 1##{}", 1), &mut self.object_selected, 1);
-            let mut should_delete_object = false;
-            for i in 0..self.world_objects.len() {
-              ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].model()));
-              ui.same_line(0.0);
-              ui.radio_button(im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
-              if self.object_selected == i as i32 +2 {
-                ui.same_line(0.0);
-                should_delete_object = ui.button(im_str!("Delete"), (0.0,0.0));
-              }
-            }
-            
-            if should_delete_object {
-              self.world_objects.remove(self.object_selected as usize-2);
-              self.object_selected = 0;
-            }
-          });
-      }
-      
-      if self.object_selected == 1 {
-        if self.data.model_sizes.len() == 0 {
-          self.object_selected = 0;
-        } else if self.object_being_placed.is_none() {
-          self.change_selected_object();
+    }
+    
+    match self.run_game {
+      true => {
+        self.show_axis = false;
+        if let Some(lua) = &mut lua {
+          lua.set("delta_time", delta_time);
         }
-      } else {
-        self.object_being_placed = None;
-      }
-      
-      if self.window_unloaded_models {
-        let mut should_load_all = false;
-        
-        let window_width = 200.0;
-        ui.window(im_str!("Model List ./Models/*"))
-          .position((self.data.window_dim.x-window_width*1.1, 32.0), ImGuiCond::FirstUseEver)
-          .size((window_width, 400.0), ImGuiCond::FirstUseEver)
-          .build(|| {
-            if ui.button(im_str!("Load All"), (0.0, 0.0)) {
-              should_load_all = true;
+        for world_object in &mut self.world_objects {
+          world_object.update_game(&mut lua);
+        }
+      },
+      false => {
+        for i in 0..self.data.model_sizes.len() {
+          for j in 0..self.known_models.len() {
+            if self.data.model_sizes[i].0 == self.known_models[j].0 {
+              self.known_models[j].2 = true;
             }
-            for i in 0..self.known_models.len() {
-              let mut model_loaded = self.known_models[i].2;
-              ui.text(im_str!("{}", self.known_models[i].0));
-              ui.same_line(0.0);
-              ui.checkbox(im_str!("##{}", i), &mut model_loaded);
-              if !self.known_models[i].2 && model_loaded {
+          }
+        }
+        
+        if let Some(ui) = &ui {
+          if self.window_world_objects {
+            ui.window(im_str!("World Objects"))
+              .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+              .build(|| {
+                ui.text("None");
+                ui.same_line(0.0);
+                ui.radio_button(im_str!("##{}", 0), &mut self.object_selected, 0);
+                ui.text("Placing New");
+                ui.same_line(0.0);
+                ui.radio_button(im_str!("Key 1##{}", 1), &mut self.object_selected, 1);
+                let mut should_delete_object = false;
+                for i in 0..self.world_objects.len() {
+                  ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].model()));
+                  ui.same_line(0.0);
+                  ui.radio_button(im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
+                  if self.object_selected == i as i32 +2 {
+                    ui.same_line(0.0);
+                    should_delete_object = ui.button(im_str!("Delete"), (0.0,0.0));
+                  }
+                }
+                
+                if should_delete_object {
+                  self.world_objects.remove(self.object_selected as usize-2);
+                  self.object_selected = 0;
+                }
+              });
+          }
+          
+          if self.object_selected == 1 {
+            if self.data.model_sizes.len() == 0 {
+              self.object_selected = 0;
+            } else if self.object_being_placed.is_none() {
+              self.change_selected_object();
+            }
+          } else {
+            self.object_being_placed = None;
+          }
+          
+          if self.window_unloaded_models {
+            let mut should_load_all = false;
+            
+            let window_width = 200.0;
+            ui.window(im_str!("Model List ./Models/*"))
+              .position((self.data.window_dim.x-window_width*1.1, 32.0), ImGuiCond::FirstUseEver)
+              .size((window_width, 400.0), ImGuiCond::FirstUseEver)
+              .build(|| {
+                if ui.button(im_str!("Load All"), (0.0, 0.0)) {
+                  should_load_all = true;
+                }
+                for i in 0..self.known_models.len() {
+                  let mut model_loaded = self.known_models[i].2;
+                  ui.text(im_str!("{}", self.known_models[i].0));
+                  ui.same_line(0.0);
+                  ui.checkbox(im_str!("##{}", i), &mut model_loaded);
+                  if !self.known_models[i].2 && model_loaded {
+                    let reference = self.known_models[i].0.to_string();
+                    let location = self.known_models[i].1.to_string();
+                    self.mut_data().models_to_load.push((reference, location));
+                  }
+                  if self.known_models[i].2 {
+                    ui.same_line(0.0);
+                    if ui.button(im_str!("Unload"), (0.0, 0.0)) { 
+                      self.data.models_to_unload.push(self.known_models[i].0.to_string());
+                      self.known_models[i].2 = false;
+                    }
+                  }
+                }
+              });
+            
+            if should_load_all {
+              for i in 0..self.known_models.len() {
                 let reference = self.known_models[i].0.to_string();
                 let location = self.known_models[i].1.to_string();
                 self.mut_data().models_to_load.push((reference, location));
               }
-              if self.known_models[i].2 {
-                ui.same_line(0.0);
-                if ui.button(im_str!("Unload"), (0.0, 0.0)) { 
-                  self.data.models_to_unload.push(self.known_models[i].0.to_string());
-                  self.known_models[i].2 = false;
-                }
+            }
+          }
+          
+          ui.window(im_str!("Loaded Models"))
+            .position((60.0, 460.0), ImGuiCond::FirstUseEver)
+            .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+            //.always_auto_resize(true)
+          .build(|| {
+            let old_selection = self.selected_model;
+            for i in 0..self.data().model_sizes.len() {
+              let (reference, _) = self.data().model_sizes[i].clone();
+              let name = (reference.to_string()).to_owned();
+              ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
+            }
+            if old_selection != self.selected_model {
+              if self.object_being_placed.is_some() {
+                self.change_selected_object();
               }
             }
           });
+        }
         
-        if should_load_all {
-          for i in 0..self.known_models.len() {
-            let reference = self.known_models[i].0.to_string();
-            let location = self.known_models[i].1.to_string();
-            self.mut_data().models_to_load.push((reference, location));
+        if self.data().imgui_info.wants_mouse {
+          self.mouse_state = MouseState::Ui;
+        } else {
+          self.mouse_state = MouseState::World;
+        }
+        
+        let mouse = self.data.mouse_pos;
+        
+        match self.mouse_state {
+          MouseState::Ui => {
+            
+          },
+          MouseState::World => {
+            self.update_input(delta_time);
+            
+            if self.mouse_placement {
+              let mut cam_pos = self.camera.get_position();
+              let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
+              if mouse_ray.y < 0.0 {
+                while cam_pos.y > 0.0  {
+                  cam_pos += mouse_ray;
+                }
+                // TODO: align with goal height
+                cam_pos -= mouse_ray;
+                cam_pos.y = self.placing_height;
+              }
+              
+              if let Some(object) = &mut self.object_being_placed {
+                if self.snap_to_grid {
+                  cam_pos.x = cam_pos.x.round();
+                  cam_pos.y = cam_pos.y.round();
+                  cam_pos.z = cam_pos.z.round();
+                }
+                object.set_position(cam_pos.xyz());
+              }
+            }
           }
         }
-      }
-      
-      ui.window(im_str!("Loaded Models"))
-       .position((60.0, 460.0), ImGuiCond::FirstUseEver)
-       .size((200.0, 400.0), ImGuiCond::FirstUseEver)
-       //.always_auto_resize(true)
-       .build(|| {
-         let old_selection = self.selected_model;
-         for i in 0..self.data().model_sizes.len() {
-           let (reference, _) = self.data().model_sizes[i].clone();
-           let name = (reference.to_string()).to_owned();
-           ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
-         }
-         if old_selection != self.selected_model {
-           if self.object_being_placed.is_some() {
-             self.change_selected_object();
-           }
-         }
-       });
-    }
-    
-    if self.data().imgui_info.wants_mouse {
-      self.mouse_state = MouseState::Ui;
-    } else {
-      self.mouse_state = MouseState::World;
-    }
-    
-    let mouse = self.data.mouse_pos;
-    
-    match self.mouse_state {
-      MouseState::Ui => {
+            
+        if let Some(object) = &mut self.object_being_placed {
+          object.update(ui, &mut lua, self.data.window_dim, delta_time);
+        }
         
-      },
-      MouseState::World => {
-        self.update_input(delta_time);
-        
-        if self.mouse_placement {
-          let mut cam_pos = self.camera.get_position();
-          let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
-          if mouse_ray.y < 0.0 {
-            while cam_pos.y > 0.0  {
-              cam_pos += mouse_ray;
-            }
-            // TODO: align with goal height
-            cam_pos -= mouse_ray;
-            cam_pos.y = self.placing_height;
-          }
-          
-          if let Some(object) = &mut self.object_being_placed {
-            if self.snap_to_grid {
-              cam_pos.x = cam_pos.x.round();
-              cam_pos.y = cam_pos.y.round();
-              cam_pos.z = cam_pos.z.round();
-            }
-            object.set_position(cam_pos.xyz());
-          }
+        if self.object_selected > 1 {
+          self.world_objects[self.object_selected as usize-2].update(ui, &mut lua, self.data.window_dim, delta_time);
         }
       }
-    }
-    
-    if let Some(object) = &mut self.object_being_placed {
-      object.update(ui, self.data.window_dim, delta_time);
-    }
-    
-    if self.object_selected > 1 {
-      self.world_objects[self.object_selected as usize-2].update(ui, self.data.window_dim, delta_time);
     }
   }
   

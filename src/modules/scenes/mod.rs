@@ -4,6 +4,8 @@ use maat_graphics::imgui::*;
 use maat_input_handler::MappedKeys;
 use maat_input_handler::Controller;
 
+use hlua::Lua;
+
 use std::vec::Vec;
 
 use winit;
@@ -115,7 +117,7 @@ pub trait Scene {
   fn mut_data(&mut self) -> &mut SceneData;
   fn future_scene(&mut self, window_size: Vector2<f32>) -> Box<Scene>;
   
-  fn update(&mut self, ui: Option<&Ui>, delta_time: f32);
+  fn update(&mut self, ui: Option<&Ui>, lua: Option<&mut Lua>, delta_time: f32);
   fn draw(&self, draw_calls: &mut Vec<DrawCall>);
   
   fn scene_finished(&self) -> bool {

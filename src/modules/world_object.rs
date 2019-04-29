@@ -1,6 +1,9 @@
 use maat_graphics::DrawCall;
 use maat_graphics::imgui::*;
 
+use hlua;
+use hlua::Lua;
+
 use cgmath::{Vector2, Vector3};
 
 #[derive(Clone)]
@@ -73,7 +76,21 @@ impl WorldObject {
     self.position = pos;
   }
   
-  pub fn update(&mut self, ui: Option<&Ui>, window_dim: Vector2<f32>, _delta_time: f32) {
+  pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
+    if let Some(lua) = lua {
+      lua.set("x", self.reference_num);
+      //  lua.execute_from_reader::<(), _>(File::open(&Path::new("test.lua")).unwrap());
+      {
+        let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
+        update.call::<()>().unwrap();
+      }
+      //lua.execute::<()>("x = x + 1").unwrap();
+      let x: i32 = lua.get("x").unwrap();  // x is equal to 3
+      println!("object id: {}, lua add one: {}", self.reference_num, x);
+    }
+  }
+  
+  pub fn update(&mut self, ui: Option<&Ui>, lua: &mut Option<&mut Lua>, window_dim: Vector2<f32>, _delta_time: f32) {
      if let Some(ui) = &ui {
        let ui_window_size = (450.0, 200.0);
        ui.window(im_str!("Object Being Placed"))
