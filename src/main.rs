@@ -4,6 +4,11 @@ extern crate maat_input_handler;
 extern crate cgmath;
 extern crate rand;
 extern crate csv;
+extern crate hlua;
+extern crate wren;
+
+use wren::{Configuration, VM};
+use hlua::Lua;
 
 use maat_graphics::imgui::*;
 
@@ -19,6 +24,10 @@ use maat_graphics::DrawCall;
 use cgmath::{Vector2, Vector4};
 
 use std::time;
+use std::fs::File;
+use std::path::Path;
+use std::mem;
+use std::ptr;
 
 const MAJOR: u32 = 0;
 const MINOR: u32 = 1;
@@ -44,8 +53,36 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
 }
 
 fn main() {
+  
+  let mut lua = Lua::new();
+  
+  lua.set("x", 2);
+  lua.execute_from_reader::<(), _>(File::open(&Path::new("test.lua")).unwrap());
+  {
+    let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
+    update.call::<()>().unwrap();
+  }
+  //lua.execute::<()>("x = x + 1").unwrap();
+  let x: i32 = lua.get("x").unwrap();  // x is equal to 3
+  println!("lua x: {}", x);
+  
+  let cfg = Configuration::new();
+  let mut vm = VM::new(cfg);
+  
+  vm.interpret_file("test.wren").unwrap();
+  vm.get_variable("main", "Test", 0);
+  
+  let class_handle = vm.get_slot_handle(0);//.unwrap();
+  let update = vm.make_call_handle("update(_)");
+  
+  vm.set_slot_handle(0, &class_handle);
+  vm.set_slot_double(0, 2.0);
+  vm.call(&update);
+  let x = vm.get_slot_double(0).unwrap();
+  println!("wren x: {:?}", x);
+  
   let mut imgui = ImGui::init();
-  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1920.0, 1080.0, false).use_imgui(&mut imgui);
+  let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 1080.0, false).use_imgui(&mut imgui);
   
   graphics.preload_font(String::from("Arial"),
                         String::from("./resources/Fonts/TimesNewRoman.png"),

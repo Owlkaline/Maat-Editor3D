@@ -126,7 +126,22 @@ impl EditorScreen {
       if self.last_mouse_pos != Vector2::new(-1.0, -1.0) {
         let x_offset = self.last_mouse_pos.x - mouse.x;
         let y_offset = mouse.y - self.last_mouse_pos.y;
-        self.camera.process_mouse_movement(x_offset, y_offset);
+      //  self.camera.process_mouse_movement(x_offset, y_offset);
+        
+        let mut cam_pos = self.camera.get_position();
+        let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
+        if mouse_ray.y < 0.0 {
+          while cam_pos.y > 0.0  {
+            cam_pos += mouse_ray;
+          }
+          // TODO: align with goal height
+          cam_pos -= mouse_ray;
+          cam_pos.y = self.placing_height;
+        }
+        
+        let point_of_rotation = cam_pos;
+        
+        self.camera.process_mouse_movement_around_point(x_offset, y_offset, point_of_rotation);
       }
     }
     
