@@ -5,6 +5,9 @@ extern crate cgmath;
 extern crate rand;
 extern crate csv;
 extern crate hlua;
+extern crate rhai;
+
+use rhai::{Engine, Scope, RegisterFn};
 
 use hlua::Lua;
 use std::ffi::c_void;
@@ -50,7 +53,19 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
                                            "Arial".to_string()));
 }
 
+fn get_x() -> i64 {
+  2
+}
+
 fn main() {
+  
+  let mut engine = Engine::new();
+  
+  let mut scope: Scope  = Vec::new();
+  engine.register_fn("get_x", get_x);
+  let x = engine.eval_file::<i64>("test.rhai").unwrap();
+  
+  println!("rhai x: {}", x);
   
   let mut lua = Lua::new();
   
