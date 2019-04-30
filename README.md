@@ -29,4 +29,4 @@ Contributions are welcome! Feel free to submit pull requests.
 ## License
 
 Licensed under
- * MIT license ([LICENSE-MIT](LICENSE) or http://opensource.org/licenses/MIT)
+ * MIT license ([LICENSE](LICENSE) or http://opensource.org/licenses/MIT)
