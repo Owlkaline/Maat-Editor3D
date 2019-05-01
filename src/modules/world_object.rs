@@ -21,7 +21,7 @@ pub struct WorldObject {
 
 impl WorldObject {
   pub fn new_empty(reference_num: u32, model: String, location: String) -> WorldObject {
-    WorldObject {
+    let mut object = WorldObject {
       reference_num,
       model,
       location,
@@ -31,11 +31,13 @@ impl WorldObject {
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
-    }
+    };
+    
+    object
   }
   
   pub fn new(reference_num: u32, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
-    WorldObject {
+    let mut object = WorldObject {
       reference_num,
       model,
       location,
@@ -45,7 +47,13 @@ impl WorldObject {
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
-    }
+    };
+    
+    object
+  }
+  
+  pub fn get_id(&mut self) -> i64 {
+    self.reference_num as i64
   }
   
   pub fn id(&self) -> u32 {
