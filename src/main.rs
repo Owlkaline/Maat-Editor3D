@@ -55,40 +55,20 @@ fn get_x() -> i64 {
 }
 
 fn main() {
-  
-  //let mut engine = Engine::new();
-  
- // engine.register_fn("get_id", get_x);
-  //let x = engine.eval_file::<i64>("test.rhai").unwrap();
-  
-  //println!("rhai x: {}", x);
-  
   let mut lua = Lua::new();
-  
+  /*
   lua.set("x", 2);
+  lua.set("delta_time", 1);
   lua.execute_from_reader::<(), _>(File::open(&Path::new("test.lua")).unwrap());
   {
     let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
+    
     update.call::<()>().unwrap();
   }
   //lua.execute::<()>("x = x + 1").unwrap();
+  
   let x: i32 = lua.get("x").unwrap();  // x is equal to 3
-  println!("lua x: {}", x);
-  /*
-  let cfg = Configuration::new();
-  let mut vm = VM::new(cfg);
-  
-  vm.interpret_file("test.wren").unwrap();
-  vm.get_variable("main", "Test", 0);
-  
-  let class_handle = vm.get_slot_handle(0);//.unwrap();
-  let update = vm.make_call_handle("update(_)");
-  
-  vm.set_slot_handle(0, &class_handle);
-  vm.set_slot_double(0, 2.0);
-  vm.call(&update);
-  let x = vm.get_slot_double(0).unwrap();
-  println!("wren x: {:?}", x);*/
+  println!("lua x: {}", x);*/
   
   let mut imgui = ImGui::init();
   let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 1080.0, false).use_imgui(&mut imgui);

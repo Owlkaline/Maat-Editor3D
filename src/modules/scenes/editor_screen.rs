@@ -45,6 +45,7 @@ pub struct EditorScreen {
   show_axis: bool,
   snap_to_grid: bool,
   run_game: bool,
+  f6_released_last_frame: bool,
 }
 
 impl EditorScreen {
@@ -75,6 +76,7 @@ impl EditorScreen {
       show_axis: true,
       snap_to_grid: false,
       run_game: false,
+      f6_released_last_frame: true,
     }
   }
   
@@ -97,10 +99,11 @@ impl EditorScreen {
       show_axis: true,
       snap_to_grid,
       run_game,
+      f6_released_last_frame: true,
     }
   }
   
-  pub fn update_input(&mut self, delta_time: f32) {
+  pub fn update_input(&mut self, lua: &Option<&mut Lua>, delta_time: f32) {
     self.data.controller.update();
     
     let mouse = self.data.mouse_pos;
@@ -236,14 +239,14 @@ impl EditorScreen {
     }
     
     if one_pressed {
-      self.change_selected_object()
+      self.change_selected_object(&lua)
     }
     
     self.last_mouse_pos = mouse;
   }
   
-  pub fn change_selected_object(&mut self) {
-    let id = { 
+  pub fn change_selected_object(&mut self, mut lua: &Option<&mut Lua>) {
+    let id = {
       if self.world_objects.len() > 0 {
         self.world_objects[self.world_objects.len()-1].id()+1
       } else {
@@ -292,7 +295,7 @@ impl Scene for EditorScreen {
     
     {
       let f6_pressed = self.data().keys.f6_pressed();
-      if f6_pressed{
+      if f6_pressed && self.f6_released_last_frame {
         self.run_game = !self.run_game;
       }
     }
@@ -345,6 +348,12 @@ impl Scene for EditorScreen {
         self.show_axis = false;
         if let Some(lua) = &mut lua {
           lua.set("delta_time", delta_time);
+          lua.set("mouse_x", self.data.mouse_pos.x);
+          lua.set("mouse_y", self.data.mouse_pos.y);
+          lua.set("left_mouse", self.data.left_mouse);
+          lua.set("right_mouse", self.data.right_mouse);
+          lua.set("window_dim_x", self.data.window_dim.x);
+          lua.set("window_dim_y", self.data.window_dim.y);
         }
         for world_object in &mut self.world_objects {
           world_object.update_game(&mut lua);
@@ -372,7 +381,7 @@ impl Scene for EditorScreen {
                 ui.radio_button(im_str!("Key 1##{}", 1), &mut self.object_selected, 1);
                 let mut should_delete_object = false;
                 for i in 0..self.world_objects.len() {
-                  ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].model()));
+                  ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].name()));
                   ui.same_line(0.0);
                   ui.radio_button(im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
                   if self.object_selected == i as i32 +2 {
@@ -392,7 +401,7 @@ impl Scene for EditorScreen {
             if self.data.model_sizes.len() == 0 {
               self.object_selected = 0;
             } else if self.object_being_placed.is_none() {
-              self.change_selected_object();
+              self.change_selected_object(&lua);
             }
           } else {
             self.object_being_placed = None;
@@ -451,7 +460,7 @@ impl Scene for EditorScreen {
             }
             if old_selection != self.selected_model {
               if self.object_being_placed.is_some() {
-                self.change_selected_object();
+                self.change_selected_object(&lua);
               }
             }
           });
@@ -470,7 +479,7 @@ impl Scene for EditorScreen {
             
           },
           MouseState::World => {
-            self.update_input(delta_time);
+            self.update_input(&lua, delta_time);
             
             if self.mouse_placement {
               let mut cam_pos = self.camera.get_position();
@@ -505,6 +514,7 @@ impl Scene for EditorScreen {
         }
       }
     }
+    self.f6_released_last_frame = !self.data.keys.f6_pressed();
   }
   
   fn draw(&self, draw_calls: &mut Vec<DrawCall>) {

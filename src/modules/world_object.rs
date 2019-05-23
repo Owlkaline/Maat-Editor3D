@@ -1,15 +1,21 @@
 use maat_graphics::DrawCall;
 use maat_graphics::imgui::*;
 
+use std::io::{Write, BufWriter};
+use std::fs::File;
+use std::path::Path;
+
 use hlua;
 use hlua::Lua;
 
 use cgmath::{Vector2, Vector3};
 
-#[derive(Clone)]
+const LOCATION: &str = "./Objects/";
+
 pub struct WorldObject {
   reference_num: u32,
   model: String,
+  name: String,
   location: String,
   position: Vector3<f32>,
   rotation: Vector3<f32>,
@@ -17,29 +23,80 @@ pub struct WorldObject {
   position_edit: bool,
   size_edit: bool,
   rotation_edit: bool,
+  update_function: Option<File>,
+}
+
+impl Clone for WorldObject {
+  fn clone(&self) -> Self {
+    let mut obj = WorldObject::new(self.reference_num, self.model.to_string(), self.location.to_string(), self.position, self.rotation, self.size);
+    if let Some(function) = &self.update_function {
+      obj.update_function = Some(function.try_clone().unwrap());
+    }
+    
+    obj
+  }
 }
 
 impl WorldObject {
   pub fn new_empty(reference_num: u32, model: String, location: String) -> WorldObject {
     let mut object = WorldObject {
       reference_num,
-      model,
+      model: model.to_string(),
       location,
+      name: model.to_owned() + &reference_num.to_string(),
       position: Vector3::new(0.0, 0.0, 0.0),
       rotation: Vector3::new(0.0, 0.0, 0.0),
       size: Vector3::new(1.0, 1.0, 1.0),
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
+      update_function: None,
     };
     
     object
   }
   
-  pub fn new(reference_num: u32, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+  pub fn new_with_name(reference_num: u32, object_name: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+    let mut function = None;
+    
+    let mut file_name = object_name.to_owned() + ".lua";
+    if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &file_name))) {
+      function = Some(f);
+    } else {
+      // Create lua file
+      let f = File::create(LOCATION.to_owned() + &file_name).expect("Error: Failed to create world object file");
+      let mut f = BufWriter::new(f);
+      
+      let data = "-- ref_num
+-- delta_time
+-- mouse_x
+-- mouse_y
+-- left_mouse
+-- right_mouse
+-- window_dim_x
+-- window_dim_y
+
+-- x
+-- y
+-- z
+-- rot_x
+-- rot_y
+-- rot_z
+-- size_x
+-- size_y
+-- size_z
+
+function update()
+  x = x + delta_time
+end";
+      
+      f.write_all(data.as_bytes()).expect("Unable to write data");
+    }
+    
     let mut object = WorldObject {
       reference_num,
       model,
+      name: object_name,
       location,
       position,
       rotation,
@@ -47,9 +104,16 @@ impl WorldObject {
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
+      update_function: function,//Some(File::open(&Path::new("test.lua")).unwrap()),
     };
     
     object
+  }
+  
+  pub fn new(reference_num: u32, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+    let object_name  = model.to_owned() + &reference_num.to_string();
+    
+    WorldObject::new_with_name(reference_num, object_name.to_string(), model, location, position, rotation, size)
   }
   
   pub fn get_id(&mut self) -> i64 {
@@ -58,6 +122,10 @@ impl WorldObject {
   
   pub fn id(&self) -> u32 {
     self.reference_num
+  }
+  
+  pub fn name(&self) -> String {
+    self.name.to_string()
   }
   
   pub fn model(&self) -> String {
@@ -86,26 +154,50 @@ impl WorldObject {
   
   pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
     if let Some(lua) = lua {
-      lua.set("x", self.reference_num);
-      //  lua.execute_from_reader::<(), _>(File::open(&Path::new("test.lua")).unwrap());
-      {
+      lua.set("ref_num", self.reference_num);
+      lua.set("x", self.position.x);
+      lua.set("y", self.position.y);
+      lua.set("z", self.position.z);
+      lua.set("size_x", self.size.x);
+      lua.set("size_y", self.size.y);
+      lua.set("size_z", self.size.z);
+      lua.set("rot_x", self.rotation.x);
+      lua.set("rot_y", self.rotation.y);
+      lua.set("rot_z", self.rotation.z);
+      if let Some(function) = &self.update_function {
+        lua.execute_from_reader::<(), _>(function);
         let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
+        
         update.call::<()>().unwrap();
       }
-      //lua.execute::<()>("x = x + 1").unwrap();
-      let x: i32 = lua.get("x").unwrap();  // x is equal to 3
-      println!("object id: {}, lua add one: {}", self.reference_num, x);
+      
+      self.position.x = lua.get("x").unwrap();
+      self.position.y = lua.get("y").unwrap();
+      self.position.z = lua.get("z").unwrap();
+      self.size.x = lua.get("size_x").unwrap();
+      self.size.y = lua.get("size_y").unwrap();
+      self.size.z = lua.get("size_z").unwrap();
+      self.rotation.x = lua.get("rot_x").unwrap();
+      self.rotation.y = lua.get("rot_y").unwrap();
+      self.rotation.z = lua.get("rot_z").unwrap();
     }
   }
   
-  pub fn update(&mut self, ui: Option<&Ui>, lua: &mut Option<&mut Lua>, window_dim: Vector2<f32>, _delta_time: f32) {
+  pub fn update(&mut self, ui: Option<&Ui>, lua: &mut Option<&mut Lua>, window_dim: Vector2<f32>, delta_time: f32) {
      if let Some(ui) = &ui {
        let ui_window_size = (450.0, 200.0);
+       
+       let mut imstr_name = ImString::with_capacity(32);
+       imstr_name.push_str(&self.name);
+       
        ui.window(im_str!("Object Being Placed"))
        .size(ui_window_size, ImGuiCond::FirstUseEver)
        .position((window_dim.x-ui_window_size.0-20.0, 432.0), ImGuiCond::FirstUseEver)
        //.always_auto_resize(true)
        .build(|| {
+          ui.text("Name:");
+          ui.same_line(0.0);
+          ui.input_text(im_str!(""), &mut imstr_name).build();
           ui.text(im_str!(
             "Position: ({:.1},{:.1},{:.1})",
             self.position.x,
@@ -192,6 +284,8 @@ impl WorldObject {
          //.display_format(im_str!("%.0f"))
         
       });
+      
+      self.name = imstr_name.to_str().to_string();
     }
   }
   
