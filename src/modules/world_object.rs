@@ -65,6 +65,7 @@ impl WorldObject {
     
     let mut file_name = object_name.to_owned() + ".lua";
     if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name))) {
+      println!("{:?}", LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name);
       function = Some(f);
     } else {
       // Create lua file
@@ -159,6 +160,7 @@ end";
   }
   
   pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
+    
     if let Some(lua) = lua {
       lua.set("ref_num", self.reference_num);
       lua.set("x", self.position.x);

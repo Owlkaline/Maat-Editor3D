@@ -14,6 +14,7 @@ pub fn get_models() -> Vec<(String, String, bool)> {
   let mut models = Vec::new();
   
   for path in paths {
+    println!("{:?}", path);
     models.push(path.unwrap().path().display().to_string());
   }
   

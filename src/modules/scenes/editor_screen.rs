@@ -15,6 +15,8 @@ use rand::{thread_rng};
 
 use cgmath::{Vector2, Vector3};
 
+use std::fs;
+
 const CAMERA_DEFAULT_X: f32 = 83.93359;
 const CAMERA_DEFAULT_Y: f32 = 128.62776;
 const CAMERA_DEFAULT_Z: f32 = 55.85842;
@@ -31,7 +33,9 @@ enum MouseState {
 pub struct EditorWindows {
   world_objects: bool,
   model_list: bool,
+  loaded_models: bool,
   scene_details: bool,
+  load_window: bool,
 }
 
 #[derive(Clone)]
@@ -46,7 +50,9 @@ impl EditorWindows {
     EditorWindows {
       world_objects: true,
       model_list: true,
+      loaded_models: true,
       scene_details: true,
+      load_window: false,
     }
   }
 }
@@ -76,6 +82,7 @@ pub struct EditorScreen {
   run_game: bool,
   f6_released_last_frame: bool,
   scene_name: String,
+  load_scene_option: i32,
   windows: EditorWindows,
   options: EditorOptions,
 }
@@ -105,6 +112,7 @@ impl EditorScreen {
       run_game: false,
       f6_released_last_frame: true,
       scene_name: "empty_scene".to_string(),
+      load_scene_option: 0,
       windows: EditorWindows::new(),
       options: EditorOptions::new(),
     }
@@ -126,6 +134,7 @@ impl EditorScreen {
       run_game,
       f6_released_last_frame: true,
       scene_name,
+      load_scene_option: 0,
       windows,
       options,
     }
@@ -295,13 +304,56 @@ impl EditorScreen {
   }
   
   pub fn draw_imgui(&mut self, ui: Option<&Ui>, mut lua: Option<&mut Lua>) {
-    if self.run_game {
-      return;
-    }
-    
     if let Some(ui) = &ui {
       self.mut_data().imgui_info.wants_mouse = ui.want_capture_mouse();
       self.mut_data().imgui_info.wants_keyboard = ui.want_capture_keyboard();
+      
+      if self.windows.load_window {
+        fs::create_dir_all("./Scenes");
+        let paths = fs::read_dir("./Scenes/").unwrap();
+        
+        let mut scenes = Vec::new();
+        
+        for path in paths {
+          
+          scenes.push(ImString::new(path.unwrap().path().display().to_string()));
+         // println!("{:?}", path);
+        }
+        
+        let mut should_load = false;
+        ui.window(im_str!("Load Scene"))
+          .size((500.0, 100.0), ImGuiCond::FirstUseEver)
+          .build( || {
+            let items: Vec<_> = scenes.iter().map(|p| 
+              p.as_ref()
+            ).collect();
+            
+            ui.text("Scene: ");
+            ui.same_line(0.0);
+            ui.combo(im_str!(""), &mut self.load_scene_option, &items[..], -1);
+            should_load = ui.button(im_str!("Load"), (0.0,0.0));
+          });
+        
+        if should_load {
+          let mut path = scenes[self.load_scene_option as usize].to_str().to_string();
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          path.remove(0);
+          let (load_models, objects) = import(path.to_string());
+          println!("World object length: {}", objects.len());
+          self.world_objects = objects;
+          self.data.models_to_load = load_models;
+          self.windows.load_window = false;
+        }
+        
+        return;
+      }
       
       let mut should_new = false;
       let mut should_save = false;
@@ -323,6 +375,7 @@ impl EditorScreen {
         ui.menu(im_str!("Windows")).build(|| {
           ui.menu_item(im_str!("Scene Details")).selected(&mut self.windows.scene_details).build();
           ui.menu_item(im_str!("Model List")).selected(&mut self.windows.model_list).build();
+          ui.menu_item(im_str!("Loaded Models")).selected(&mut self.windows.loaded_models).build();
           ui.menu_item(im_str!("World Objects")).selected(&mut self.windows.world_objects).build();
         });
       });
@@ -334,15 +387,16 @@ impl EditorScreen {
         export(self.scene_name.to_string(), &self.world_objects);
       }
       if should_load {
-        let (load_models, objects) = import(self.scene_name.to_string());
-        println!("World object length: {}", objects.len());
-        self.world_objects = objects;
-        self.data.models_to_load = load_models;
+        
+        self.windows.load_window = true;
       }
       if should_exit {
         self.data.should_close = true;
       }
       
+      if self.run_game {
+        return;
+      }
       
       if self.windows.scene_details {
         let mut imstr_scene_name = ImString::with_capacity(32);
@@ -427,23 +481,25 @@ impl EditorScreen {
         }
       }
       
-      ui.window(im_str!("Loaded Models"))
-        .position((60.0, 460.0), ImGuiCond::FirstUseEver)
-        .size((200.0, 400.0), ImGuiCond::FirstUseEver)
-        //.always_auto_resize(true)
-      .build(|| {
-        let old_selection = self.selected_model;
-        for i in 0..self.data().model_sizes.len() {
-          let (reference, _) = self.data().model_sizes[i].clone();
-          let name = (reference.to_string()).to_owned();
-          ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
-        }
-        if old_selection != self.selected_model {
-          if self.object_being_placed.is_some() {
-            self.change_selected_object(&lua);
+      if self.windows.loaded_models {
+        ui.window(im_str!("Loaded Models"))
+          .position((60.0, 460.0), ImGuiCond::FirstUseEver)
+          .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+          //.always_auto_resize(true)
+        .build(|| {
+          let old_selection = self.selected_model;
+          for i in 0..self.data().model_sizes.len() {
+            let (reference, _) = self.data().model_sizes[i].clone();
+            let name = (reference.to_string()).to_owned();
+            ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
           }
-        }
-      });
+          if old_selection != self.selected_model {
+            if self.object_being_placed.is_some() {
+              self.change_selected_object(&lua);
+            }
+          }
+        });
+      }
     }
   }
 }
