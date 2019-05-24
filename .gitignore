@@ -19,10 +19,12 @@ win64
 .settings/*
 old/*
 src/obj/*
-
+Scenes/*
+Models/*
 .vs/
 x64/
 ~*
+testrun/
 settings.ini
 
 

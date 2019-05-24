@@ -3,6 +3,7 @@ use maat_graphics::imgui::*;
 
 use std::io::{Write, BufWriter};
 use std::fs::File;
+use std::fs;
 use std::path::Path;
 
 use hlua;
@@ -10,13 +11,15 @@ use hlua::Lua;
 
 use cgmath::{Vector2, Vector3};
 
-const LOCATION: &str = "./Objects/";
+const LOCATION: &str = "./Scenes/";
+const OBJECTS: &str = "/Objects/";
 
 pub struct WorldObject {
   reference_num: u32,
   model: String,
   name: String,
   location: String,
+  directory: String,
   position: Vector3<f32>,
   rotation: Vector3<f32>,
   size: Vector3<f32>,
@@ -28,7 +31,7 @@ pub struct WorldObject {
 
 impl Clone for WorldObject {
   fn clone(&self) -> Self {
-    let mut obj = WorldObject::new(self.reference_num, self.model.to_string(), self.location.to_string(), self.position, self.rotation, self.size);
+    let mut obj = WorldObject::new_with_name(self.reference_num, self.name.to_string(), self.directory.to_string(), self.model.to_string(), self.location.to_string(), self.position, self.rotation, self.size);
     if let Some(function) = &self.update_function {
       obj.update_function = Some(function.try_clone().unwrap());
     }
@@ -38,11 +41,12 @@ impl Clone for WorldObject {
 }
 
 impl WorldObject {
-  pub fn new_empty(reference_num: u32, model: String, location: String) -> WorldObject {
+  pub fn new_empty(reference_num: u32, model: String, location: String, scene_name: String) -> WorldObject {
     let mut object = WorldObject {
       reference_num,
       model: model.to_string(),
       location,
+      directory: scene_name.to_string(),
       name: model.to_owned() + &reference_num.to_string(),
       position: Vector3::new(0.0, 0.0, 0.0),
       rotation: Vector3::new(0.0, 0.0, 0.0),
@@ -56,15 +60,16 @@ impl WorldObject {
     object
   }
   
-  pub fn new_with_name(reference_num: u32, object_name: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+  pub fn new_with_name(reference_num: u32, object_name: String, directory: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
     let mut function = None;
     
     let mut file_name = object_name.to_owned() + ".lua";
-    if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &file_name))) {
+    if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name))) {
       function = Some(f);
     } else {
       // Create lua file
-      let f = File::create(LOCATION.to_owned() + &file_name).expect("Error: Failed to create world object file");
+      fs::create_dir_all(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string());
+      let f = File::create(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name.to_string()).expect("Error: Failed to create world object file");
       let mut f = BufWriter::new(f);
       
       let data = "-- ref_num
@@ -98,6 +103,7 @@ end";
       model,
       name: object_name,
       location,
+      directory,
       position,
       rotation,
       size,
@@ -110,10 +116,10 @@ end";
     object
   }
   
-  pub fn new(reference_num: u32, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+  pub fn new(reference_num: u32, model: String, location: String, directory: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
     let object_name  = model.to_owned() + &reference_num.to_string();
     
-    WorldObject::new_with_name(reference_num, object_name.to_string(), model, location, position, rotation, size)
+    WorldObject::new_with_name(reference_num, object_name.to_string(), directory, model, location, position, rotation, size)
   }
   
   pub fn get_id(&mut self) -> i64 {
