@@ -81,7 +81,7 @@ pub fn export(scene_name: String, world_objects: &Vec<WorldObject>, logs: &mut L
   file.flush().unwrap();
 }
 
-pub fn import(scene_name: String, mut logs: &mut Logs) -> (Vec<(String, String)>, Vec<WorldObject>) {
+pub fn import(scene_name: String, logs: &mut Logs) -> (Vec<(String, String)>, Vec<WorldObject>) {
   let mut world_objects = Vec::new();
   let mut used_models: Vec<(String, String)> = Vec::new();
   
@@ -117,7 +117,7 @@ pub fn import(scene_name: String, mut logs: &mut Logs) -> (Vec<(String, String)>
         used_models.push((model.to_string(), location.to_string()));
       }
       
-      world_objects.push(WorldObject::new_with_name(&mut logs, id, name, scene_name.to_string(), model, location,
+      world_objects.push(WorldObject::new_with_name(id, name, scene_name.to_string(), model, location,
                                           Vector3::new(x, y, z),
                                           Vector3::new(rot_x, rot_y, rot_z),
                                           Vector3::new(size_x, size_y, size_z)));

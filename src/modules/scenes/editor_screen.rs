@@ -37,6 +37,7 @@ pub struct EditorWindows {
   loaded_models: bool,
   scene_details: bool,
   load_window: bool,
+  saved: bool,
   error_window: bool,
 }
 
@@ -55,6 +56,7 @@ impl EditorWindows {
       loaded_models: true,
       scene_details: true,
       load_window: false,
+      saved: false,
       error_window: false,
     }
   }
@@ -409,7 +411,11 @@ impl EditorScreen {
         self.data.next_scene = true;
       }
       if should_save {
+        for object in &mut self.world_objects {
+          object.save_script(self.scene_name.to_string(), &mut self.logs);
+        }
         export(self.scene_name.to_string(), &self.world_objects, &mut self.logs);
+        self.windows.saved = true;
       }
       if should_load {
         
@@ -546,6 +552,17 @@ impl EditorScreen {
           }
         });
       }
+      
+      if self.windows.saved {
+        ui.window(im_str!("Scene Saved!"))
+          .position((self.data.window_dim.x*0.5, self.data.window_dim.y*0.5), ImGuiCond::FirstUseEver)
+          .size((200.0, 100.0), ImGuiCond::FirstUseEver)
+          .build(|| {
+            if ui.button(im_str!("Ok"), (0.0, 0.0)) {
+              self.windows.saved = false;
+            }
+          });
+      }
     }
   }
 }
@@ -655,11 +672,11 @@ impl Scene for EditorScreen {
         }
             
         if let Some(object) = &mut self.object_being_placed {
-          object.update(ui, self.data.window_dim, delta_time);
+          object.update(ui, self.data.window_dim, delta_time, &mut self.logs);
         }
         
         if self.object_selected > 1 {
-          self.world_objects[self.object_selected as usize-2].update(ui, self.data.window_dim, delta_time);
+          self.world_objects[self.object_selected as usize-2].update(ui, self.data.window_dim, delta_time, &mut self.logs);
         }
       }
     }

@@ -6,7 +6,10 @@ use crate::modules::Logs;
 use std::io::{Write, BufWriter};
 use std::fs::File;
 use std::fs;
+use std::fs::copy;
 use std::path::Path;
+use std::io::Read;
+use std::io::BufReader;
 
 use hlua;
 use hlua::Lua;
@@ -28,12 +31,13 @@ pub struct WorldObject {
   position_edit: bool,
   size_edit: bool,
   rotation_edit: bool,
+  has_script: bool,
   update_function: Option<File>,
 }
 
 impl Clone for WorldObject {
   fn clone(&self) -> Self {
-    let mut obj = WorldObject::new_with_name(&mut Logs::new(Vector2::new(0.0,0.0)), self.reference_num, self.name.to_string(), self.directory.to_string(), self.model.to_string(), self.location.to_string(), self.position, self.rotation, self.size);
+    let mut obj = WorldObject::new_with_name(self.reference_num, self.name.to_string(), self.directory.to_string(), self.model.to_string(), self.location.to_string(), self.position, self.rotation, self.size);
     if let Some(function) = &self.update_function {
       obj.update_function = Some(function.try_clone().unwrap());
     }
@@ -56,27 +60,62 @@ impl WorldObject {
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
+      has_script: false,
       update_function: None,
     }
   }
   
-  pub fn new_with_name(logs: &mut Logs, reference_num: u32, object_name: String, directory: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
-    let mut function = None;
+  pub fn new_with_name(reference_num: u32, object_name: String, directory: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+    let function = None;
     
     let file_name = object_name.to_owned() + ".lua";
-    if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name))) {
-      //println!("{:?}", LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name);
-      function = Some(f);
-    } else {
-      // Create lua file
-      if let Err(e) = fs::create_dir_all(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string()) {
-        logs.add_error(e.to_string());
-      }
+    let mut has_script = false;
+    if let Ok(_) = File::open(&Path::new(&(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name))) {
+      has_script = true;
+    }
+    
+    let object = WorldObject {
+      reference_num,
+      model,
+      name: object_name,
+      location,
+      directory,
+      position,
+      rotation,
+      size,
+      position_edit: false,
+      size_edit: false,
+      rotation_edit: false,
+      has_script,
+      update_function: function,
+    };
+    
+    object
+  }
+  
+  pub fn _new(reference_num: u32, model: String, location: String, directory: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
+    let object_name  = model.to_owned() + &reference_num.to_string();
+    
+    WorldObject::new_with_name(reference_num, object_name.to_string(), directory, model, location, position, rotation, size)
+  }
+  
+  pub fn create_script(&mut self, logs: &mut Logs) {
+    if self.has_script {
+      return;
+    }
+    
+    let file_name = self.name.to_owned() + ".lua";
+    
+    // Create lua file
+    if let Err(e) = fs::create_dir_all(LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string()) {
+      logs.add_error(e.to_string());
+    }
+    
+    match File::create(LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name.to_string()) {
+      Ok(f) => {
+        let mut f = BufWriter::new(f);
       
-      let f = File::create(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name.to_string()).expect("Error: Failed to create world object file");
-      let mut f = BufWriter::new(f);
-      
-      let data = "-- ref_num
+        let data = "-- ref_num
 -- delta_time
 -- mouse_x
 -- mouse_y
@@ -95,35 +134,42 @@ impl WorldObject {
 -- size_y
 -- size_z
 
-function ".to_owned() + &object_name.to_string() + "update()
+function ".to_owned() + &self.name.to_string() + "update()
   x = x + 100.0*delta_time
 end";
-      
-      f.write_all(data.as_bytes()).expect("Unable to write data");
+        
+        if let Err(e) = f.write_all(data.as_bytes()) {
+          logs.add_error(e.to_string());
+        }
+      },
+      Err(e) => {
+        logs.add_error(e.to_string());
+      }
     }
-    
-    let object = WorldObject {
-      reference_num,
-      model,
-      name: object_name,
-      location,
-      directory,
-      position,
-      rotation,
-      size,
-      position_edit: false,
-      size_edit: false,
-      rotation_edit: false,
-      update_function: function,//Some(File::open(&Path::new("test.lua")).unwrap()),
-    };
-    
-    object
   }
   
-  pub fn _new(reference_num: u32, model: String, location: String, directory: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>, mut logs: &mut Logs) -> WorldObject {
-    let object_name  = model.to_owned() + &reference_num.to_string();
+  pub fn save_script(&mut self, directory: String, logs: &mut Logs) {
+    if !self.has_script {
+      return;
+    }
     
-    WorldObject::new_with_name(&mut logs, reference_num, object_name.to_string(), directory, model, location, position, rotation, size)
+    let file_name = self.name.to_owned() + ".lua";
+    
+    // Create lua folder
+    if let Err(e) = fs::create_dir_all(LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string()) {
+      logs.add_error(e.to_string());
+    }
+    
+    let file_from = LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name.to_string();
+    let file_to = LOCATION.to_owned() + &directory.to_string() + &OBJECTS.to_string() + &file_name.to_string();
+    
+    if file_from.eq(&file_to) {
+      return;
+    }
+    
+    if let Err(e) = copy(file_from, file_to) {
+      logs.add_error(e.to_string());
+    }
   }
   
   pub fn load_script(&mut self) {
@@ -205,7 +251,7 @@ end";
     }
   }
   
-  pub fn update(&mut self, ui: Option<&Ui>, window_dim: Vector2<f32>, _delta_time: f32) {
+  pub fn update(&mut self, ui: Option<&Ui>, window_dim: Vector2<f32>, _delta_time: f32, logs: &mut Logs) {
      if let Some(ui) = &ui {
        let ui_window_size = (450.0, 200.0);
        
@@ -217,6 +263,17 @@ end";
        .position((window_dim.x-ui_window_size.0-20.0, 432.0), ImGuiCond::FirstUseEver)
        //.always_auto_resize(true)
        .build(|| {
+          if self.has_script {
+            let txt = "Script: ".to_owned() + &self.name.to_string() + ".lua";
+            let mut imstr_script = ImString::with_capacity(32);
+            imstr_script.push_str(&txt);
+            ui.text(imstr_script);
+          } else {
+            if ui.button(im_str!("Create Script"), (0.0, 0.0)) {
+              self.create_script(logs);
+              self.has_script = true;
+            }
+          }
           ui.text("Name:");
           ui.same_line(0.0);
           ui.input_text(im_str!(""), &mut imstr_name).build();
