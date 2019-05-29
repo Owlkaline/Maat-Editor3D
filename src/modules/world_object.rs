@@ -92,7 +92,7 @@ impl WorldObject {
 -- size_y
 -- size_z
 
-function update()
+function ".to_owned() + &object_name.to_string() + "update()
   x = x + delta_time
 end";
       
@@ -172,10 +172,12 @@ end";
       lua.set("rot_x", self.rotation.x);
       lua.set("rot_y", self.rotation.y);
       lua.set("rot_z", self.rotation.z);
+      
       if let Some(function) = &self.update_function {
-        lua.execute_from_reader::<(), _>(function);
-        let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
         
+        lua.execute_from_reader::<(), _>(function);
+        let mut function_name = self.name.to_owned() + "update";
+        let mut update: hlua::LuaFunction<_> = lua.get(function_name).unwrap();
         update.call::<()>().unwrap();
       }
       

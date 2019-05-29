@@ -321,8 +321,11 @@ impl EditorScreen {
         }
         
         let mut should_load = false;
+        let mut should_cancel = false;
         ui.window(im_str!("Load Scene"))
           .size((500.0, 100.0), ImGuiCond::FirstUseEver)
+          .always_auto_resize(true)
+          .collapsible(false)
           .build( || {
             let items: Vec<_> = scenes.iter().map(|p| 
               p.as_ref()
@@ -331,8 +334,15 @@ impl EditorScreen {
             ui.text("Scene: ");
             ui.same_line(0.0);
             ui.combo(im_str!(""), &mut self.load_scene_option, &items[..], -1);
+            should_cancel = ui.button(im_str!("Cancel"), (0.0, 0.0));
+            ui.same_line(0.0);
             should_load = ui.button(im_str!("Load"), (0.0,0.0));
           });
+        
+        if should_cancel {
+          self.windows.load_window = false;
+          return;
+        }
         
         if should_load {
           let mut path = scenes[self.load_scene_option as usize].to_str().to_string();
@@ -350,6 +360,7 @@ impl EditorScreen {
           self.world_objects = objects;
           self.data.models_to_load = load_models;
           self.windows.load_window = false;
+          self.scene_name = path.to_string();
         }
         
         return;
@@ -404,10 +415,28 @@ impl EditorScreen {
         
         ui.window(im_str!("Scene Details"))
           .size((250.0, 60.0), ImGuiCond::FirstUseEver)
+          .position((0.0, 55.0), ImGuiCond::FirstUseEver)
+          .always_auto_resize(true)
           .build( || {
             ui.text("Scene name:");
             ui.same_line(0.0);
             ui.input_text(im_str!(""), &mut imstr_scene_name).build();
+             if ui.button(im_str!("Delete Scene"), (0.0, 0.0)) {
+               self.world_objects.clear();
+               self.placing_height = 0.0;
+               self.object_being_placed = None;
+               self.mouse_state = MouseState::World;
+               self.selected_model = 0;
+               self.object_selected = 0;
+               self.run_game = false;
+               self.f6_released_last_frame = true;
+               let mut new_scene = ImString::with_capacity(32);
+               new_scene.push_str("empty_scene");
+               imstr_scene_name = new_scene;
+               self.load_scene_option = 0;
+               
+               fs::remove_dir_all("./Scenes/".to_owned() + &self.scene_name);
+             }
           });
           
         self.scene_name = imstr_scene_name.to_str().to_string();
@@ -416,6 +445,7 @@ impl EditorScreen {
       if self.windows.world_objects {
         ui.window(im_str!("World Objects"))
           .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+          .position((0.0, 140.0), ImGuiCond::FirstUseEver)
           .build(|| {
             ui.text("None");
             ui.same_line(0.0);
@@ -483,7 +513,7 @@ impl EditorScreen {
       
       if self.windows.loaded_models {
         ui.window(im_str!("Loaded Models"))
-          .position((60.0, 460.0), ImGuiCond::FirstUseEver)
+          .position((0.0, 540.0), ImGuiCond::FirstUseEver)
           .size((200.0, 400.0), ImGuiCond::FirstUseEver)
           //.always_auto_resize(true)
         .build(|| {
