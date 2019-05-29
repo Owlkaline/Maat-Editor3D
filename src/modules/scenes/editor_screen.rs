@@ -86,6 +86,8 @@ pub struct EditorScreen {
   known_models: Vec<(String, String, bool)>,
   run_game: bool,
   f6_released_last_frame: bool,
+  right_clicked_last_frame: bool,
+  update_mouse_cursor: bool,
   scene_name: String,
   load_scene_option: i32,
   logs: Logs,
@@ -119,6 +121,8 @@ impl EditorScreen {
       known_models: import_export::get_models(&mut logs),
       run_game: false,
       f6_released_last_frame: true,
+      right_clicked_last_frame: false,
+      update_mouse_cursor: false,
       scene_name: "empty_scene".to_string(),
       load_scene_option: 0,
       logs,
@@ -145,6 +149,8 @@ impl EditorScreen {
       known_models: import_export::get_models(&mut logs),
       run_game,
       f6_released_last_frame: true,
+      right_clicked_last_frame: false,
+      update_mouse_cursor: false,
       scene_name,
       load_scene_option: 0,
       logs,
@@ -177,32 +183,61 @@ impl EditorScreen {
     
     let left_clicked = self.data.left_mouse;
     let right_clicked = self.data.right_mouse;
+    self.update_mouse_cursor = false;
     
     if right_clicked {
       self.object_being_placed = None;
       self.object_selected = 0;
       if self.last_mouse_pos != Vector2::new(-1.0, -1.0) {
+        
         let x_offset = self.last_mouse_pos.x - mouse.x;
         let y_offset = mouse.y - self.last_mouse_pos.y;
-      //  self.camera.process_mouse_movement(x_offset, y_offset);
+        self.camera.process_orbiting_camera_movement(x_offset*-1.0, y_offset);
         
-        let mut cam_pos = self.camera.get_position();
-        let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
-        if mouse_ray.y < 0.0 {
-          while cam_pos.y > 0.0  {
-            cam_pos += mouse_ray;
+        if !self.right_clicked_last_frame {
+          let mut cam_pos = self.camera.get_position();
+          let mouse_ray = self.camera.mouse_to_world_ray(mouse, self.data.window_dim);
+          if mouse_ray.y < 0.0 {
+            while cam_pos.y > 0.0  {
+              cam_pos += mouse_ray;
+            }
+            // TODO: align with goal height
+            cam_pos -= mouse_ray;
+            cam_pos.y = self.placing_height;
           }
-          // TODO: align with goal height
-          cam_pos -= mouse_ray;
-          cam_pos.y = self.placing_height;
+          
+          let point_of_rotation = cam_pos;
+          self.camera.set_target(point_of_rotation);
         }
+        //self.camera.process_mouse_movement_around_point(x_offset, y_offset, point_of_rotation);
+       // self.camera.rotate_camera_horizontally(Vector3::new(0.0, 0.0, 0.0), 1.0);
         
-        let point_of_rotation = cam_pos;
-        
-        self.camera.process_mouse_movement_around_point(x_offset, y_offset, point_of_rotation);
+      }
+      
+      let mouse = self.data.mouse_pos;
+      let mut new_mouse_pos = mouse;
+      
+      if mouse.x < 10.0 {
+        new_mouse_pos.x = self.data.window_dim.x - 15.0;
+      }
+      if mouse.x > self.data.window_dim.x - 10.0 {
+        new_mouse_pos.x = 15.0;
+      }
+      if mouse.y < 20.0 {
+        new_mouse_pos.y = self.data.window_dim.y -25.0;
+      }
+      if mouse.y > self.data.window_dim.y - 20.0 {
+        new_mouse_pos.y = 25.0;
+      }
+      
+      if mouse != new_mouse_pos {
+        self.update_mouse_cursor = true;
+        self.last_mouse_pos = new_mouse_pos;
       }
     }
     
+    self.camera.change_zoom(scroll_delta*-1.0, 100.0*delta_time);
+    /*
     if w_pressed {
       self.camera.process_movement(camera::Direction::YAlignedForward, delta_time);
     }
@@ -225,7 +260,7 @@ impl EditorScreen {
       self.camera.process_movement(camera::Direction::Forward, 10.0*delta_time);
     } else if scroll_delta < 0.0 {
       self.camera.process_movement(camera::Direction::Backward, 10.0*delta_time);
-    }
+    }*/
     
     if self.object_selected > 0 {
       let mut pos = {
@@ -290,6 +325,7 @@ impl EditorScreen {
       self.change_selected_object()
     }
     
+    self.right_clicked_last_frame = right_clicked;
     self.last_mouse_pos = mouse;
   }
   
@@ -718,6 +754,9 @@ impl Scene for EditorScreen {
     // Window width and height is 1280 x 720
     //let width = self.data().window_dim.x;
     //let height = self.data().window_dim.y;
+    if self.update_mouse_cursor {
+      draw_calls.push(DrawCall::set_cursor_position(self.last_mouse_pos.x, self.last_mouse_pos.y));
+    }
     
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
     
