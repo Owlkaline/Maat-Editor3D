@@ -495,6 +495,7 @@ impl EditorScreen {
             }
             
             if should_delete_object {
+              self.world_objects[self.object_selected as usize-2].delete_script(&mut self.logs);
               self.world_objects.remove(self.object_selected as usize-2);
               self.object_selected = 0;
             }

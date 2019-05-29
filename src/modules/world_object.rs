@@ -169,6 +169,10 @@ end";
   }
   
   pub fn delete_script(&mut self, logs: &mut Logs) {
+    if !self.has_script {
+      return;
+    }
+    
     let file_name = self.name.to_owned() + ".lua";
     if let Err(e) = fs::remove_file(LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name.to_string()) {
       logs.add_error(e.to_string());
