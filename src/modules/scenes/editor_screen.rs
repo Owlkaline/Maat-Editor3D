@@ -55,7 +55,7 @@ impl EditorWindows {
       model_list: true,
       loaded_models: true,
       scene_details: true,
-      load_window: false,
+      load_window: true,
       saved: false,
       error_window: false,
     }
@@ -386,7 +386,7 @@ impl EditorScreen {
       let mut should_save = false;
       let mut should_load = false;
       let mut should_exit = false;
-      
+      let mut should_run = self.run_game;
       ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
           ui.menu_item(im_str!("New")).selected(&mut should_new).build();
@@ -399,6 +399,9 @@ impl EditorScreen {
           ui.menu_item(im_str!("Show Axis")).shortcut(im_str!("Ctrl+A")).selected(&mut self.options.show_axis).build();
           ui.menu_item(im_str!("Snap to grid")).shortcut(im_str!("Ctrl+G")).selected(&mut self.options.snap_to_grid).build();
         });
+        ui.menu(im_str!("Run Options")).build(|| {
+          ui.menu_item(im_str!("Run")).shortcut(im_str!("F6")).selected(&mut self.run_game).build();
+        });
         ui.menu(im_str!("Windows")).build(|| {
           ui.menu_item(im_str!("Scene Details")).selected(&mut self.windows.scene_details).build();
           ui.menu_item(im_str!("Model List")).selected(&mut self.windows.model_list).build();
@@ -406,6 +409,12 @@ impl EditorScreen {
           ui.menu_item(im_str!("World Objects")).selected(&mut self.windows.world_objects).build();
         });
       });
+      
+      if !should_run && self.run_game {
+        for object in &mut self.world_objects {
+          object.load_script();
+        }
+      }
       
       if should_new {
         self.data.next_scene = true;
@@ -418,7 +427,6 @@ impl EditorScreen {
         self.windows.saved = true;
       }
       if should_load {
-        
         self.windows.load_window = true;
       }
       if should_exit {
@@ -593,12 +601,22 @@ impl Scene for EditorScreen {
     
     {
       let f6_pressed = self.data().keys.f6_pressed();
+      
+      let should_run = self.run_game;
+      self.draw_imgui(ui);
       if f6_pressed && self.f6_released_last_frame {
         self.run_game = !self.run_game;
-        if self.run_game {
-          for object in &mut self.world_objects {
-            object.load_script();
-          }
+      }
+      
+      // Load scripts if went from edit to game run
+      if self.run_game && !should_run {
+        for object in &mut self.world_objects {
+          object.load_script();
+        }
+      // Reset positions if went from game run to edit
+      } else if !self.run_game && should_run {
+        for object in &mut self.world_objects {
+          object.reset();
         }
       }
     }
@@ -689,7 +707,7 @@ impl Scene for EditorScreen {
     }
     self.f6_released_last_frame = !self.data.keys.f6_pressed();
     
-    self.draw_imgui(ui);
+    
     if self.logs.is_shown() {
       self.logs.draw(ui);
     }

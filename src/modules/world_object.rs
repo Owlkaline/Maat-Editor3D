@@ -19,6 +19,22 @@ use cgmath::{Vector2, Vector3};
 const LOCATION: &str = "./Scenes/";
 const OBJECTS: &str = "/Objects/";
 
+pub struct DefaultOptions {
+  position: Vector3<f32>,
+  size: Vector3<f32>,
+  rotation: Vector3<f32>,
+}
+
+impl DefaultOptions {
+  pub fn new(position: Vector3<f32>, size: Vector3<f32>, rotation: Vector3<f32>) -> DefaultOptions {
+    DefaultOptions {
+      position,
+      size,
+      rotation,
+    }
+  }
+}
+
 pub struct WorldObject {
   reference_num: u32,
   model: String,
@@ -33,6 +49,7 @@ pub struct WorldObject {
   rotation_edit: bool,
   has_script: bool,
   update_function: Option<File>,
+  default_options: DefaultOptions,
 }
 
 impl Clone for WorldObject {
@@ -62,6 +79,7 @@ impl WorldObject {
       rotation_edit: false,
       has_script: false,
       update_function: None,
+      default_options: DefaultOptions::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0),Vector3::new(0.0, 0.0, 0.0)),
     }
   }
   
@@ -88,6 +106,7 @@ impl WorldObject {
       rotation_edit: false,
       has_script,
       update_function: function,
+      default_options: DefaultOptions::new(position, size, rotation),
     };
     
     object
@@ -141,11 +160,21 @@ end";
         if let Err(e) = f.write_all(data.as_bytes()) {
           logs.add_error(e.to_string());
         }
+        self.has_script = true;
       },
       Err(e) => {
         logs.add_error(e.to_string());
       }
     }
+  }
+  
+  pub fn delete_script(&mut self, logs: &mut Logs) {
+    let file_name = self.name.to_owned() + ".lua";
+    if let Err(e) = fs::remove_file(LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name.to_string()) {
+      logs.add_error(e.to_string());
+    }
+    self.has_script = false;
+    self.update_function = None;
   }
   
   pub fn save_script(&mut self, directory: String, logs: &mut Logs) {
@@ -215,7 +244,13 @@ end";
   }
   
   pub fn set_position(&mut self, pos: Vector3<f32>) {
-    self.position = pos;
+    self.default_options.position = pos;
+  }
+  
+  pub fn reset(&mut self) {
+    self.position = self.default_options.position;
+    self.size = self.default_options.size;
+    self.rotation = self.default_options.rotation;
   }
   
   pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
@@ -252,6 +287,10 @@ end";
   }
   
   pub fn update(&mut self, ui: Option<&Ui>, window_dim: Vector2<f32>, _delta_time: f32, logs: &mut Logs) {
+     self.position = self.default_options.position;
+     self.size = self.default_options.size;
+     self.rotation = self.default_options.rotation;
+     
      if let Some(ui) = &ui {
        let ui_window_size = (450.0, 200.0);
        
@@ -268,10 +307,13 @@ end";
             let mut imstr_script = ImString::with_capacity(32);
             imstr_script.push_str(&txt);
             ui.text(imstr_script);
+            ui.same_line(0.0);
+            if ui.button(im_str!("Delete Script"), (0.0, 0.0)) {
+              self.delete_script(logs);
+            }
           } else {
             if ui.button(im_str!("Create Script"), (0.0, 0.0)) {
               self.create_script(logs);
-              self.has_script = true;
             }
           }
           ui.text("Name:");
@@ -365,6 +407,10 @@ end";
       });
       
       self.name = imstr_name.to_str().to_string();
+      
+      self.default_options.position = self.position;
+      self.default_options.size = self.size;
+      self.default_options.rotation = self.rotation;
     }
   }
   
