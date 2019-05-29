@@ -7,7 +7,6 @@ extern crate csv;
 extern crate hlua;
 
 use hlua::Lua;
-use std::ffi::c_void;
 use maat_graphics::imgui::*;
 
 mod modules;
@@ -22,10 +21,6 @@ use maat_graphics::DrawCall;
 use cgmath::{Vector2, Vector4};
 
 use std::time;
-use std::fs::File;
-use std::path::Path;
-use std::mem;
-use std::ptr;
 
 const MAJOR: u32 = 0;
 const MINOR: u32 = 1;
@@ -50,25 +45,8 @@ fn fps_overlay(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>, fps: f6
                                            "Arial".to_string()));
 }
 
-fn get_x() -> i64 {
-  2
-}
-
 fn main() {
   let mut lua = Lua::new();
-  /*
-  lua.set("x", 2);
-  lua.set("delta_time", 1);
-  lua.execute_from_reader::<(), _>(File::open(&Path::new("test.lua")).unwrap());
-  {
-    let mut update: hlua::LuaFunction<_> = lua.get("update").unwrap();
-    
-    update.call::<()>().unwrap();
-  }
-  //lua.execute::<()>("x = x + 1").unwrap();
-  
-  let x: i32 = lua.get("x").unwrap();  // x is equal to 3
-  println!("lua x: {}", x);*/
   
   let mut imgui = ImGui::init();
   let mut graphics = CoreMaat::new("Maat Editor".to_string(), (MAJOR) << 22 | (MINOR) << 12 | (PATCH), 1280.0, 1080.0, false).use_imgui(&mut imgui);

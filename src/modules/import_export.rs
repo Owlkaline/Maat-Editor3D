@@ -1,14 +1,18 @@
 use csv;
 
 use crate::modules::WorldObject;
+use crate::modules::Logs;
 
 use cgmath::Vector3;
 
 use std::fs::File;
 use std::fs;
 
-pub fn get_models() -> Vec<(String, String, bool)> {
-  fs::create_dir_all("./Models");
+pub fn get_models(logs: &mut Logs) -> Vec<(String, String, bool)> {
+  if let Err(e) = fs::create_dir_all("./Models") {
+    logs.add_error(e.to_string());
+  }
+  
   let paths = fs::read_dir("./Models/").unwrap();
   
   let mut models = Vec::new();
@@ -50,8 +54,11 @@ pub fn get_models() -> Vec<(String, String, bool)> {
   known_models
 }
 
-pub fn export(scene_name: String, world_objects: &Vec<WorldObject>) {
-  fs::create_dir_all("./Scenes/".to_owned() + &scene_name);
+pub fn export(scene_name: String, world_objects: &Vec<WorldObject>, logs: &mut Logs) {
+  if let Err(e) = fs::create_dir_all("./Scenes/".to_owned() + &scene_name) {
+    logs.add_error(e.to_string());
+  }
+  
   let mut file = csv::Writer::from_path("./Scenes/".to_owned() + &scene_name + "/" + &scene_name + ".csv").unwrap();
   file.write_record(&["id", "name", "model", "location", "x", "y", "z", "rot_x", "rot_y", "rot_z", "size_x", "size_y", "size_z"]).unwrap();
   for object in world_objects {
@@ -74,7 +81,7 @@ pub fn export(scene_name: String, world_objects: &Vec<WorldObject>) {
   file.flush().unwrap();
 }
 
-pub fn import(scene_name: String) -> (Vec<(String, String)>, Vec<WorldObject>) {
+pub fn import(scene_name: String, mut logs: &mut Logs) -> (Vec<(String, String)>, Vec<WorldObject>) {
   let mut world_objects = Vec::new();
   let mut used_models: Vec<(String, String)> = Vec::new();
   
@@ -110,7 +117,7 @@ pub fn import(scene_name: String) -> (Vec<(String, String)>, Vec<WorldObject>) {
         used_models.push((model.to_string(), location.to_string()));
       }
       
-      world_objects.push(WorldObject::new_with_name(id, name, scene_name.to_string(), model, location,
+      world_objects.push(WorldObject::new_with_name(&mut logs, id, name, scene_name.to_string(), model, location,
                                           Vector3::new(x, y, z),
                                           Vector3::new(rot_x, rot_y, rot_z),
                                           Vector3::new(size_x, size_y, size_z)));

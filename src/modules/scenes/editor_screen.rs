@@ -9,6 +9,7 @@ use crate::modules::scenes::SceneData;
 use crate::modules::WorldObject;
 use crate::modules::import_export;
 use crate::modules::import_export::{import, export};
+use crate::modules::Logs;
 
 use rand;
 use rand::{thread_rng};
@@ -36,6 +37,7 @@ pub struct EditorWindows {
   loaded_models: bool,
   scene_details: bool,
   load_window: bool,
+  error_window: bool,
 }
 
 #[derive(Clone)]
@@ -53,6 +55,7 @@ impl EditorWindows {
       loaded_models: true,
       scene_details: true,
       load_window: false,
+      error_window: false,
     }
   }
 }
@@ -83,6 +86,7 @@ pub struct EditorScreen {
   f6_released_last_frame: bool,
   scene_name: String,
   load_scene_option: i32,
+  logs: Logs,
   windows: EditorWindows,
   options: EditorOptions,
 }
@@ -97,6 +101,8 @@ impl EditorScreen {
     camera.set_yaw(CAMERA_DEFAULT_YAW);
     camera.set_move_speed(CAMERA_DEFAULT_SPEED);
     
+    let mut logs = Logs::new(window_size);
+    
     EditorScreen {
       data: SceneData::new(window_size, model_sizes),
       rng,
@@ -108,17 +114,21 @@ impl EditorScreen {
       mouse_state: MouseState::World,
       selected_model: 0,
       object_selected: 0,
-      known_models: import_export::get_models(),
+      known_models: import_export::get_models(&mut logs),
       run_game: false,
       f6_released_last_frame: true,
       scene_name: "empty_scene".to_string(),
       load_scene_option: 0,
+      logs,
       windows: EditorWindows::new(),
       options: EditorOptions::new(),
     }
   }
   
   pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, windows: EditorWindows, options: EditorOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+    
+    let mut logs = Logs::new(window_size);
+    
     EditorScreen {
       data: SceneData::new(window_size, model_sizes),
       rng,
@@ -130,17 +140,18 @@ impl EditorScreen {
       mouse_state: MouseState::World,
       selected_model: 0,
       object_selected: 0,
-      known_models: import_export::get_models(),
+      known_models: import_export::get_models(&mut logs),
       run_game,
       f6_released_last_frame: true,
       scene_name,
       load_scene_option: 0,
+      logs,
       windows,
       options,
     }
   }
   
-  pub fn update_input(&mut self, lua: &Option<&mut Lua>, delta_time: f32) {
+  pub fn update_input(&mut self, delta_time: f32) {
     self.data.controller.update();
     
     let mouse = self.data.mouse_pos;
@@ -158,8 +169,6 @@ impl EditorScreen {
     let k_pressed = self.data.keys.k_pressed();
     let o_pressed = self.data.keys.o_pressed();
     let l_pressed = self.data.keys.l_pressed();
-    
-    let f6_pressed = self.data.keys.f6_pressed();
     
     let one_pressed = self.data.keys.one_pressed();
     let scroll_delta = self.data.scroll_delta;
@@ -276,13 +285,13 @@ impl EditorScreen {
     }
     
     if one_pressed {
-      self.change_selected_object(&lua)
+      self.change_selected_object()
     }
     
     self.last_mouse_pos = mouse;
   }
   
-  pub fn change_selected_object(&mut self, mut lua: &Option<&mut Lua>) {
+  pub fn change_selected_object(&mut self) {
     let id = {
       if self.world_objects.len() > 0 {
         self.world_objects[self.world_objects.len()-1].id()+1
@@ -303,21 +312,22 @@ impl EditorScreen {
     }
   }
   
-  pub fn draw_imgui(&mut self, ui: Option<&Ui>, mut lua: Option<&mut Lua>) {
+  pub fn draw_imgui(&mut self, ui: Option<&Ui>) {
     if let Some(ui) = &ui {
       self.mut_data().imgui_info.wants_mouse = ui.want_capture_mouse();
       self.mut_data().imgui_info.wants_keyboard = ui.want_capture_keyboard();
       
       if self.windows.load_window {
-        fs::create_dir_all("./Scenes");
+        if let Err(e) = fs::create_dir_all("./Scenes") {
+          self.logs.add_error(e.to_string());
+        }
+        
         let paths = fs::read_dir("./Scenes/").unwrap();
         
         let mut scenes = Vec::new();
         
         for path in paths {
-          
           scenes.push(ImString::new(path.unwrap().path().display().to_string()));
-         // println!("{:?}", path);
         }
         
         let mut should_load = false;
@@ -345,6 +355,11 @@ impl EditorScreen {
         }
         
         if should_load {
+          if self.load_scene_option as usize+1 > scenes.len() {
+            self.windows.load_window = false;
+            return;
+          }
+          
           let mut path = scenes[self.load_scene_option as usize].to_str().to_string();
           path.remove(0);
           path.remove(0);
@@ -355,8 +370,7 @@ impl EditorScreen {
           path.remove(0);
           path.remove(0);
           path.remove(0);
-          let (load_models, objects) = import(path.to_string());
-          println!("World object length: {}", objects.len());
+          let (load_models, objects) = import(path.to_string(), &mut self.logs);
           self.world_objects = objects;
           self.data.models_to_load = load_models;
           self.windows.load_window = false;
@@ -395,7 +409,7 @@ impl EditorScreen {
         self.data.next_scene = true;
       }
       if should_save {
-        export(self.scene_name.to_string(), &self.world_objects);
+        export(self.scene_name.to_string(), &self.world_objects, &mut self.logs);
       }
       if should_load {
         
@@ -435,7 +449,9 @@ impl EditorScreen {
                imstr_scene_name = new_scene;
                self.load_scene_option = 0;
                
-               fs::remove_dir_all("./Scenes/".to_owned() + &self.scene_name);
+               if let Err(e) = fs::remove_dir_all("./Scenes/".to_owned() + &self.scene_name) {
+                 self.logs.add_error(e.to_string());
+               }
              }
           });
           
@@ -525,7 +541,7 @@ impl EditorScreen {
           }
           if old_selection != self.selected_model {
             if self.object_being_placed.is_some() {
-              self.change_selected_object(&lua);
+              self.change_selected_object();
             }
           }
         });
@@ -562,6 +578,11 @@ impl Scene for EditorScreen {
       let f6_pressed = self.data().keys.f6_pressed();
       if f6_pressed && self.f6_released_last_frame {
         self.run_game = !self.run_game;
+        if self.run_game {
+          for object in &mut self.world_objects {
+            object.load_script();
+          }
+        }
       }
     }
     
@@ -569,7 +590,7 @@ impl Scene for EditorScreen {
       if self.data.model_sizes.len() == 0 {
         self.object_selected = 0;
       } else if self.object_being_placed.is_none() {
-        self.change_selected_object(&lua);
+        self.change_selected_object();
       }
     } else {
       self.object_being_placed = None;
@@ -607,7 +628,7 @@ impl Scene for EditorScreen {
             
           },
           MouseState::World => {
-            self.update_input(&lua, delta_time);
+            self.update_input(delta_time);
             
             if self.options.place_with_mouse {
               let mut cam_pos = self.camera.get_position();
@@ -634,11 +655,11 @@ impl Scene for EditorScreen {
         }
             
         if let Some(object) = &mut self.object_being_placed {
-          object.update(ui, &mut lua, self.data.window_dim, delta_time);
+          object.update(ui, self.data.window_dim, delta_time);
         }
         
         if self.object_selected > 1 {
-          self.world_objects[self.object_selected as usize-2].update(ui, &mut lua, self.data.window_dim, delta_time);
+          self.world_objects[self.object_selected as usize-2].update(ui, self.data.window_dim, delta_time);
         }
       }
     }
@@ -651,7 +672,10 @@ impl Scene for EditorScreen {
     }
     self.f6_released_last_frame = !self.data.keys.f6_pressed();
     
-    self.draw_imgui(ui, lua);
+    self.draw_imgui(ui);
+    if self.logs.is_shown() {
+      self.logs.draw(ui);
+    }
   }
   
   fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
