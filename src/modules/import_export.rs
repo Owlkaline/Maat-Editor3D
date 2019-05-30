@@ -86,44 +86,47 @@ pub fn import(scene_name: String, logs: &mut Logs) -> (Vec<(String, String)>, Ve
   let mut used_models: Vec<(String, String)> = Vec::new();
   
   //let file = File::open("./".to_owned() + &scene_name.to_string() + "test.csv").unwrap();
-  if let Ok(file) = File::open("./Scenes/".to_owned() + &scene_name + "/" + &scene_name + ".csv") {
-    let mut reader = csv::Reader::from_reader(file);
-    
-    for whole_object in reader.records() {
-      let object = whole_object.unwrap();
-      let id: u32 = object[0].parse().unwrap();
-      let name: String = object[1].parse().unwrap();
-      let model: String = object[2].parse().unwrap();
-      let location: String = object[3].parse().unwrap();
-      let x: f32 = object[4].parse().unwrap();
-      let y: f32 = object[5].parse().unwrap();
-      let z: f32 = object[6].parse().unwrap();
-      let rot_x: f32 = object[7].parse().unwrap();
-      let rot_y: f32 = object[8].parse().unwrap();
-      let rot_z: f32 = object[9].parse().unwrap();
-      let size_x: f32 = object[10].parse().unwrap();
-      let size_y: f32 = object[11].parse().unwrap();
-      let size_z: f32 = object[12].parse().unwrap();
+  match File::open("./Scenes/".to_owned() + &scene_name + "/" + &scene_name + ".csv") {
+    Ok(file) => {
+      let mut reader = csv::Reader::from_reader(file);
       
-      let mut unique = true;
-      for i in 0..used_models.len() {
-        if used_models[i].0 == model {
-          unique = false;
-          break;
+      for whole_object in reader.records() {
+        let object = whole_object.unwrap();
+        let id: u32 = object[0].parse().unwrap();
+        let name: String = object[1].parse().unwrap();
+        let model: String = object[2].parse().unwrap();
+        let location: String = object[3].parse().unwrap();
+        let x: f32 = object[4].parse().unwrap();
+        let y: f32 = object[5].parse().unwrap();
+        let z: f32 = object[6].parse().unwrap();
+        let rot_x: f32 = object[7].parse().unwrap();
+        let rot_y: f32 = object[8].parse().unwrap();
+        let rot_z: f32 = object[9].parse().unwrap();
+        let size_x: f32 = object[10].parse().unwrap();
+        let size_y: f32 = object[11].parse().unwrap();
+        let size_z: f32 = object[12].parse().unwrap();
+        
+        let mut unique = true;
+        for i in 0..used_models.len() {
+          if used_models[i].0 == model {
+            unique = false;
+            break;
+          }
         }
+        
+        if unique {
+          used_models.push((model.to_string(), location.to_string()));
+        }
+        
+        world_objects.push(WorldObject::new_with_name(id, name, scene_name.to_string(), model, location,
+                                            Vector3::new(x, y, z),
+                                            Vector3::new(rot_x, rot_y, rot_z),
+                                            Vector3::new(size_x, size_y, size_z)));
       }
-      
-      if unique {
-        used_models.push((model.to_string(), location.to_string()));
-      }
-      
-      world_objects.push(WorldObject::new_with_name(id, name, scene_name.to_string(), model, location,
-                                          Vector3::new(x, y, z),
-                                          Vector3::new(rot_x, rot_y, rot_z),
-                                          Vector3::new(size_x, size_y, size_z)));
-    }
-  } else {
-    println!("Import failed");
+    },
+    Err(e) => {
+      logs.add_error(e.to_string());
+    },
   }
   
   (used_models, world_objects)

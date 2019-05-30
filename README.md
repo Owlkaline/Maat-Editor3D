@@ -14,6 +14,8 @@ sudo apt-get install build-essential git python cmake libvulkan-dev vulkan-utils
 
 ### Notes for cross-compiling from Linux to windows
 
+$ cargo build --target=x86_64-pc-windows-gnu --release
+
 Need to include libstdc++-6.dll libgcc_s_seh-1.dll
 from
 /usr/lib/gcc/x86_64-w64-mingw32/8.3-win32

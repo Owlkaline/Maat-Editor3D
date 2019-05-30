@@ -164,12 +164,12 @@ impl EditorScreen {
     
     let mouse = self.data.mouse_pos;
     
-    let w_pressed = self.data.keys.w_pressed();
-    let a_pressed = self.data.keys.a_pressed();
-    let s_pressed = self.data.keys.s_pressed();
-    let d_pressed = self.data.keys.d_pressed();
-    let r_pressed = self.data.keys.r_pressed();
-    let f_pressed = self.data.keys.f_pressed();
+    let _w_pressed = self.data.keys.w_pressed();
+    let _a_pressed = self.data.keys.a_pressed();
+    let _s_pressed = self.data.keys.s_pressed();
+    let _d_pressed = self.data.keys.d_pressed();
+    let _r_pressed = self.data.keys.r_pressed();
+    let _f_pressed = self.data.keys.f_pressed();
     
     let u_pressed = self.data.keys.u_pressed();
     let j_pressed = self.data.keys.j_pressed();
@@ -422,7 +422,7 @@ impl EditorScreen {
       let mut should_save = false;
       let mut should_load = false;
       let mut should_exit = false;
-      let mut should_run = self.run_game;
+      let should_run = self.run_game;
       ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
           ui.menu_item(im_str!("New")).selected(&mut should_new).build();

@@ -8,8 +8,6 @@ use std::fs::File;
 use std::fs;
 use std::fs::copy;
 use std::path::Path;
-use std::io::Read;
-use std::io::BufReader;
 
 use hlua;
 use hlua::Lua;
@@ -272,7 +270,10 @@ end";
       lua.set("rot_z", self.rotation.z);
       
       if let Some(function) = &self.update_function {
-        lua.execute_from_reader::<(), _>(function);
+        if let Err(_) = lua.execute_from_reader::<(), _>(function) {
+          // Should never happen
+          return;
+        }
         let function_name = self.name.to_owned() + "update";
         let mut update: hlua::LuaFunction<_> = lua.get(function_name).unwrap();
         update.call::<()>().unwrap();
