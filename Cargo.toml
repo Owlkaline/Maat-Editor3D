@@ -1,6 +1,6 @@
 [package]
 name = "maat_editor_3d"
-version = "0.1.0"
+version = "0.2.1"
 authors = ["Lilith <lilith@inet-sys.com>"]
 edition = "2018"
 

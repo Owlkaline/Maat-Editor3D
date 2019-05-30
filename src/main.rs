@@ -23,8 +23,8 @@ use cgmath::{Vector2, Vector4};
 use std::time;
 
 const MAJOR: u32 = 0;
-const MINOR: u32 = 1;
-const PATCH: u32 = 0;
+const MINOR: u32 = 2;
+const PATCH: u32 = 1;
 
 fn benchmark(draw_calls: &mut Vec<DrawCall>, dimensions: Vector2<f32>) {
   draw_calls.push(DrawCall::draw_text_basic(Vector2::new(dimensions.x - 80.0, 15.0), 
