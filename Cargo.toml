@@ -5,7 +5,7 @@ authors = ["Lilith <lilith@inet-sys.com>"]
 edition = "2018"
 
 [dependencies]
-maat_graphics = { path = "./Maat-Graphics/" }
+maat_graphics = { path = "../Maat-Graphics/" }
 maat_input_handler = { path = "./Maat-InputHandler/" }
 #maat_sound = { path = "./Maat-Sound/" }
 winit = "0.19.1"
