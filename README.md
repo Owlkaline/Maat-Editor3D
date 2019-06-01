@@ -20,6 +20,8 @@ Need to include libstdc++-6.dll libgcc_s_seh-1.dll
 from
 /usr/lib/gcc/x86_64-w64-mingw32/8.3-win32
 
+$ RUSTFLAGS='-C link-args=-static-libstdc++' cargo build --target=x86_64-pc-windows-gnu -v
+
 ## Donate
 
 Lilith645 (Original and Current maintainer) [![Become a patron](https://c5.patreon.com/external/logo/become_a_patron_button.png)](https://www.patreon.com/AoAkuma)

@@ -36,6 +36,7 @@ pub struct EditorWindows {
   model_list: bool,
   loaded_models: bool,
   scene_details: bool,
+  camera_options: bool,
   load_window: bool,
   saved: bool,
   error_window: bool,
@@ -48,6 +49,17 @@ pub struct EditorOptions {
   place_with_mouse: bool,
 }
 
+#[derive(Clone)]
+pub struct GameOptions {
+  first_game_loop: bool,
+  pub camera_type: i32,
+  pub camera_target: i32,
+  pub camera_distance: f32,
+  pub camera_location: Vector3<f32>,
+  pub camera_horizontal_rotation: bool,
+  pub camera_vertical_rotation: bool,
+}
+
 impl EditorWindows {
   pub fn new() -> EditorWindows {
     EditorWindows {
@@ -55,6 +67,7 @@ impl EditorWindows {
       model_list: true,
       loaded_models: true,
       scene_details: true,
+      camera_options: true,
       load_window: true,
       saved: false,
       error_window: false,
@@ -68,6 +81,20 @@ impl EditorOptions {
       snap_to_grid: false,
       show_axis: true,
       place_with_mouse: true,
+    }
+  }
+}
+
+impl GameOptions {
+  pub fn new() -> GameOptions {
+    GameOptions {
+      first_game_loop: true,
+      camera_type: 0,
+      camera_target: 0,
+      camera_distance: 90.0,
+      camera_location: Vector3::new(0.0,0.0,0.0),
+      camera_horizontal_rotation: false,
+      camera_vertical_rotation: false,
     }
   }
 }
@@ -93,6 +120,7 @@ pub struct EditorScreen {
   logs: Logs,
   windows: EditorWindows,
   options: EditorOptions,
+  game_options: GameOptions,
 }
 
 impl EditorScreen {
@@ -128,10 +156,11 @@ impl EditorScreen {
       logs,
       windows: EditorWindows::new(),
       options: EditorOptions::new(),
+      game_options: GameOptions::new(),
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, windows: EditorWindows, options: EditorOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
     
     let mut logs = Logs::new(window_size);
     
@@ -156,6 +185,7 @@ impl EditorScreen {
       logs,
       windows,
       options,
+      game_options,
     }
   }
   
@@ -213,7 +243,7 @@ impl EditorScreen {
        // self.camera.rotate_camera_horizontally(Vector3::new(0.0, 0.0, 0.0), 1.0);
         
       }
-      
+      /*
       let mouse = self.data.mouse_pos;
       let mut new_mouse_pos = mouse;
       
@@ -233,7 +263,7 @@ impl EditorScreen {
       if mouse != new_mouse_pos {
         self.update_mouse_cursor = true;
         self.last_mouse_pos = new_mouse_pos;
-      }
+      }*/
     }
     
     self.camera.change_zoom(scroll_delta*-1.0, 100.0*delta_time);
@@ -329,6 +359,26 @@ impl EditorScreen {
     self.last_mouse_pos = mouse;
   }
   
+  pub fn reset(&mut self) {
+    self.world_objects.clear();
+    self.placing_height = 0.0;
+    self.object_being_placed = None;
+    self.mouse_state = MouseState::World;
+    self.selected_model = 0;
+    self.object_selected = 0;
+    self.run_game = false;
+    self.f6_released_last_frame = true;
+    self.scene_name = "new_scene".to_string();
+    self.load_scene_option = 0;
+    self.windows.load_window = false;
+    
+    self.camera = camera::Camera::default_vk();
+    self.camera.set_position(Vector3::new(CAMERA_DEFAULT_X, CAMERA_DEFAULT_Y, CAMERA_DEFAULT_Z));
+    self.camera.set_pitch(CAMERA_DEFAULT_PITCH);
+    self.camera.set_yaw(CAMERA_DEFAULT_YAW);
+    self.camera.set_move_speed(CAMERA_DEFAULT_SPEED);
+  }
+  
   pub fn change_selected_object(&mut self) {
     let id = {
       if self.world_objects.len() > 0 {
@@ -370,6 +420,7 @@ impl EditorScreen {
         
         let mut should_load = false;
         let mut should_cancel = false;
+        let mut new = false;
         ui.window(im_str!("Load Scene"))
           .size((500.0, 100.0), ImGuiCond::FirstUseEver)
           .always_auto_resize(true)
@@ -385,7 +436,15 @@ impl EditorScreen {
             should_cancel = ui.button(im_str!("Cancel"), (0.0, 0.0));
             ui.same_line(0.0);
             should_load = ui.button(im_str!("Load"), (0.0,0.0));
+            ui.same_line(400.0);
+            new = ui.button(im_str!("New"), (0.0,0.0));
           });
+        
+        if new {
+          self.reset();
+          self.windows.load_window = false;
+          return;
+        }
         
         if should_cancel {
           self.windows.load_window = false;
@@ -408,9 +467,10 @@ impl EditorScreen {
           path.remove(0);
           path.remove(0);
           path.remove(0);
-          let (load_models, objects) = import(path.to_string(), &mut self.logs);
+          let (load_models, objects, game_options) = import(path.to_string(), &mut self.logs);
           self.world_objects = objects;
           self.data.models_to_load = load_models;
+          self.game_options = game_options;
           self.windows.load_window = false;
           self.scene_name = path.to_string();
         }
@@ -422,7 +482,7 @@ impl EditorScreen {
       let mut should_save = false;
       let mut should_load = false;
       let mut should_exit = false;
-      let should_run = self.run_game;
+      
       ui.main_menu_bar(|| {
         ui.menu(im_str!("File")).build(|| {
           ui.menu_item(im_str!("New")).selected(&mut should_new).build();
@@ -443,23 +503,19 @@ impl EditorScreen {
           ui.menu_item(im_str!("Model List")).selected(&mut self.windows.model_list).build();
           ui.menu_item(im_str!("Loaded Models")).selected(&mut self.windows.loaded_models).build();
           ui.menu_item(im_str!("World Objects")).selected(&mut self.windows.world_objects).build();
+          ui.menu_item(im_str!("Camera Options")).selected(&mut self.windows.camera_options).build();
         });
       });
       
-      if !should_run && self.run_game {
-        for object in &mut self.world_objects {
-          object.load_script();
-        }
+      if should_new {
+        self.reset();
       }
       
-      if should_new {
-        self.data.next_scene = true;
-      }
       if should_save {
         for object in &mut self.world_objects {
           object.save_script(self.scene_name.to_string(), &mut self.logs);
         }
-        export(self.scene_name.to_string(), &self.world_objects, &mut self.logs);
+        export(self.scene_name.to_string(), &self.world_objects, &self.game_options, &mut self.logs);
         self.windows.saved = true;
       }
       if should_load {
@@ -484,7 +540,9 @@ impl EditorScreen {
           .build( || {
             ui.text("Scene name:");
             ui.same_line(0.0);
+            ui.push_item_width(150.0);
             ui.input_text(im_str!(""), &mut imstr_scene_name).build();
+            ui.pop_item_width();
              if ui.button(im_str!("Delete Scene"), (0.0, 0.0)) {
                self.world_objects.clear();
                self.placing_height = 0.0;
@@ -549,24 +607,29 @@ impl EditorScreen {
             if ui.button(im_str!("Load All"), (0.0, 0.0)) {
               should_load_all = true;
             }
-            for i in 0..self.known_models.len() {
-              let mut model_loaded = self.known_models[i].2;
-              ui.text(im_str!("{}", self.known_models[i].0));
-              ui.same_line(0.0);
-              ui.checkbox(im_str!("##{}", i), &mut model_loaded);
-              if !self.known_models[i].2 && model_loaded {
-                let reference = self.known_models[i].0.to_string();
-                let location = self.known_models[i].1.to_string();
-                self.mut_data().models_to_load.push((reference, location));
-              }
-              if self.known_models[i].2 {
-                ui.same_line(0.0);
-                if ui.button(im_str!("Unload"), (0.0, 0.0)) { 
-                  self.data.models_to_unload.push(self.known_models[i].0.to_string());
-                  self.known_models[i].2 = false;
+            let (size_x, size_y) = ui.get_content_region_avail();//get_window_size();
+            ui.child_frame(im_str!("child frame"), (size_x, size_y))
+              .show_borders(true)
+              .build(|| {
+                for i in 0..self.known_models.len() {
+                  let mut model_loaded = self.known_models[i].2;
+                  ui.text(im_str!("{}", self.known_models[i].0));
+                  ui.same_line(0.0);
+                  ui.checkbox(im_str!("##{}", i), &mut model_loaded);
+                  if !self.known_models[i].2 && model_loaded {
+                    let reference = self.known_models[i].0.to_string();
+                    let location = self.known_models[i].1.to_string();
+                    self.mut_data().models_to_load.push((reference, location));
+                  }
+                  if self.known_models[i].2 {
+                    ui.same_line(0.0);
+                    if ui.button(im_str!("Unload"), (0.0, 0.0)) { 
+                      self.data.models_to_unload.push(self.known_models[i].0.to_string());
+                      self.known_models[i].2 = false;
+                    }
+                  }
                 }
-              }
-            }
+              });
           });
         
         if should_load_all {
@@ -598,6 +661,68 @@ impl EditorScreen {
         });
       }
       
+      if self.windows.camera_options {
+        ui.window(im_str!("Game Camera"))
+          .always_auto_resize(true)
+          .position((self.data.window_dim.x - 500.0, 25.0), ImGuiCond::FirstUseEver)
+          .build(|| {
+             ui.text("Camera Type:");
+             ui.same_line(0.0);
+             ui.push_item_width(150.0);
+             ui.combo(im_str!(""), &mut self.game_options.camera_type, &[im_str!("First Person"), im_str!("Orbiting")], -1);
+             ui.pop_item_width();
+             
+             match self.game_options.camera_type {
+               0 => {
+                 ui.new_line();
+                 ui.text(im_str!("Position"));
+                 
+                 ui.columns(3, im_str!("x | y | z"), true);
+                 ui.text(im_str!("x:"));
+                 ui.same_line(0.0);
+                 ui.input_float(im_str!("##x"), &mut self.game_options.camera_location.x).build();
+                 ui.next_column();
+                 ui.text(im_str!("y:"));
+                 ui.same_line(0.0);
+                 ui.input_float(im_str!("##y"), &mut self.game_options.camera_location.y).build();
+                 ui.next_column();
+                 ui.text(im_str!("z:"));
+                 ui.same_line(0.0);
+                 ui.input_float(im_str!("##z"), &mut self.game_options.camera_location.z).build();
+               },
+               1 => {
+                 ui.text("Target:");
+                 ui.same_line(0.0);
+                 
+                 let mut objects = Vec::new();
+                 
+                 for i in 0..self.world_objects.len() {
+                   objects.push(ImString::new(self.world_objects[i].name()));
+                 }
+                 
+                 let items: Vec<_> = objects.iter().map(|p| 
+                   p.as_ref()
+                 ).collect();
+                 ui.push_item_width(190.0);
+                 ui.combo(im_str!("##"), &mut self.game_options.camera_target, &items[..], -1);
+                 ui.pop_item_width();
+                 ui.text("Distance:");
+                 ui.same_line(0.0);
+                 ui.push_item_width(100.0);
+                 ui.input_float(im_str!("##dist"), &mut self.game_options.camera_distance).build();
+                 ui.pop_item_width();
+                 ui.text("Horizontal Rotation");
+                 ui.same_line(0.0);
+                 ui.checkbox(im_str!("##horz"), &mut self.game_options.camera_horizontal_rotation);
+                 ui.text("Vertical Rotation");
+                 ui.same_line(0.0);
+                 ui.checkbox(im_str!("##vert"), &mut self.game_options.camera_vertical_rotation);
+               },
+               _ => {},
+             }
+          });
+      }
+      
       if self.windows.saved {
         ui.window(im_str!("Scene Saved!"))
           .position((self.data.window_dim.x*0.5, self.data.window_dim.y*0.5), ImGuiCond::FirstUseEver)
@@ -625,7 +750,7 @@ impl Scene for EditorScreen {
     if self.data().window_resized {
       Box::new(EditorScreen::new_with_data(window_size, self.rng.clone(), self.camera.clone(), 
                                            self.object_being_placed.clone(), self.scene_name.to_string(), 
-                                           self.placing_height, self.world_objects.clone(), self.windows.clone(), self.options.clone(), self.run_game, self.data.model_sizes.clone()))
+                                           self.placing_height, self.world_objects.clone(), self.windows.clone(), self.options.clone(), self.game_options.clone(), self.run_game, self.data.model_sizes.clone()))
     } else {
       Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
     }
@@ -670,7 +795,15 @@ impl Scene for EditorScreen {
     
     match self.run_game {
       true => {
-        self.options.show_axis = false;
+        if self.game_options.first_game_loop {
+          for object in &mut self.world_objects {
+            object.load_script();
+          }
+          self.camera.set_zoom(self.game_options.camera_distance);
+          self.options.show_axis = false;
+          self.game_options.first_game_loop = false;
+        }
+        
         if let Some(lua) = &mut lua {
           lua.set("delta_time", delta_time);
           lua.set("mouse_x", self.data.mouse_pos.x);
@@ -679,12 +812,30 @@ impl Scene for EditorScreen {
           lua.set("right_mouse", self.data.right_mouse);
           lua.set("window_dim_x", self.data.window_dim.x);
           lua.set("window_dim_y", self.data.window_dim.y);
+          
+          lua.set("w_key", self.data.keys.w_pressed());
+          lua.set("a_key", self.data.keys.a_pressed());
+          lua.set("s_key", self.data.keys.s_pressed());
+          lua.set("d_key", self.data.keys.d_pressed());
         }
+        
+        let mut i = 0;
         for world_object in &mut self.world_objects {
           world_object.update_game(&mut lua);
+          
+          if i == self.game_options.camera_target {
+            self.camera.set_target(world_object.position());
+          }
+          
+          i += 1;
         }
+        
       },
       false => {
+        if !self.game_options.first_game_loop {
+          self.game_options.first_game_loop = true;
+        }
+        
         for i in 0..self.data.model_sizes.len() {
           for j in 0..self.known_models.len() {
             if self.data.model_sizes[i].0 == self.known_models[j].0 {
@@ -751,21 +902,25 @@ impl Scene for EditorScreen {
   }
   
   fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
-    // Window width and height is 1280 x 720
-    //let width = self.data().window_dim.x;
-    //let height = self.data().window_dim.y;
-    if self.update_mouse_cursor {
+  /*  if self.update_mouse_cursor {
       draw_calls.push(DrawCall::set_cursor_position(self.last_mouse_pos.x, self.last_mouse_pos.y));
-    }
+    }*/
     
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
     
+    let mut i = 0;
     for world_object in &self.world_objects {
-      world_object.draw(draw_calls);
+      if i == self.object_selected as i32-2 {
+        world_object.draw_hologram(draw_calls);
+      } else {
+        world_object.draw(draw_calls);
+      }
+      
+      i+=1;
     }
     
     if let Some(object) = &self.object_being_placed {
-      object.draw(draw_calls);
+      object.draw_hologram(draw_calls);
     }
     
     if self.options.show_axis {

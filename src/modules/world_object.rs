@@ -39,12 +39,17 @@ pub struct WorldObject {
   name: String,
   location: String,
   directory: String,
+  
   position: Vector3<f32>,
   rotation: Vector3<f32>,
   size: Vector3<f32>,
+  velocity: Vector3<f32>,
+  acceleration: Vector3<f32>,
+  
   position_edit: bool,
   size_edit: bool,
   rotation_edit: bool,
+  
   has_script: bool,
   update_function: Option<File>,
   default_options: DefaultOptions,
@@ -69,12 +74,17 @@ impl WorldObject {
       location,
       directory: scene_name.to_string(),
       name: model.to_owned() + &reference_num.to_string(),
+      
       position: Vector3::new(0.0, 0.0, 0.0),
       rotation: Vector3::new(0.0, 0.0, 0.0),
       size: Vector3::new(1.0, 1.0, 1.0),
       position_edit: false,
+      velocity: Vector3::new(0.0, 0.0, 0.0),
+      acceleration: Vector3::new(0.0, 0.0, 0.0),
+      
       size_edit: false,
       rotation_edit: false,
+      
       has_script: false,
       update_function: None,
       default_options: DefaultOptions::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0),Vector3::new(0.0, 0.0, 0.0)),
@@ -96,9 +106,13 @@ impl WorldObject {
       name: object_name,
       location,
       directory,
+      
       position,
       rotation,
       size,
+      velocity: Vector3::new(0.0, 0.0, 0.0),
+      acceleration: Vector3::new(0.0, 0.0, 0.0),
+      
       position_edit: false,
       size_edit: false,
       rotation_edit: false,
@@ -140,6 +154,10 @@ impl WorldObject {
 -- right_mouse
 -- window_dim_x
 -- window_dim_y
+-- w_key
+-- a_key
+-- s_key
+-- d_key
 
 -- x
 -- y
@@ -150,9 +168,21 @@ impl WorldObject {
 -- size_x
 -- size_y
 -- size_z
+-- vel_x
+-- vel_y
+-- vel_z
+-- acc_x
+-- acc_y
+-- acc_z
 
 function ".to_owned() + &self.name.to_string() + "update()
-  x = x + 100.0*delta_time
+  x = x + vel_x*delta_time;
+  y = y + vel_y*delta_time;
+  z = z + vel_z*delta_time;
+  
+  vel_x = vel_x + acc_x*delta_time*delta_time;
+  vel_y = vel_y + acc_y*delta_time*delta_time;
+  vel_z = vel_z + acc_z*delta_time*delta_time;
 end";
         
         if let Err(e) = f.write_all(data.as_bytes()) {
@@ -256,6 +286,9 @@ end";
   }
   
   pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
+    if self.update_function.is_none() {
+      return;
+    }
     
     if let Some(lua) = lua {
       lua.set("ref_num", self.reference_num);
@@ -268,14 +301,21 @@ end";
       lua.set("rot_x", self.rotation.x);
       lua.set("rot_y", self.rotation.y);
       lua.set("rot_z", self.rotation.z);
+      lua.set("vel_x", self.velocity.x);
+      lua.set("vel_y", self.velocity.y);
+      lua.set("vel_z", self.velocity.z);
+      lua.set("acc_x", self.acceleration.x);
+      lua.set("acc_y", self.acceleration.y);
+      lua.set("acc_z", self.acceleration.z);
       
       if let Some(function) = &self.update_function {
         if let Err(_) = lua.execute_from_reader::<(), _>(function) {
           // Should never happen
           return;
         }
+        
         let function_name = self.name.to_owned() + "update";
-        let mut update: hlua::LuaFunction<_> = lua.get(function_name).unwrap();
+        let mut update: hlua::LuaFunction<_> = lua.get(function_name.to_string()).expect(&("Failed to run ".to_owned() + &function_name.to_string() + "() in file " + &LOCATION.to_string() + &self.directory.to_string() + &OBJECTS.to_string() + &self.name.to_string() + ".lua"));
         update.call::<()>().unwrap();
       }
       
@@ -288,6 +328,12 @@ end";
       self.rotation.x = lua.get("rot_x").unwrap();
       self.rotation.y = lua.get("rot_y").unwrap();
       self.rotation.z = lua.get("rot_z").unwrap();
+      self.velocity.x = lua.get("vel_x").unwrap();
+      self.velocity.y = lua.get("vel_y").unwrap();
+      self.velocity.z = lua.get("vel_z").unwrap();
+      self.acceleration.x = lua.get("acc_x").unwrap();
+      self.acceleration.y = lua.get("acc_y").unwrap();
+      self.acceleration.z = lua.get("acc_z").unwrap();
     }
   }
   
@@ -417,6 +463,10 @@ end";
       self.default_options.size = self.size;
       self.default_options.rotation = self.rotation;
     }
+  }
+  
+  pub fn draw_hologram(&self, draw_calls: &mut Vec<DrawCall>) {
+    draw_calls.push(DrawCall::draw_hologram_model(self.position, self.size, self.rotation, self.model.to_string()));
   }
   
   pub fn draw(&self, draw_calls: &mut Vec<DrawCall>) {

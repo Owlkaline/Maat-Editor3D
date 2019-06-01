@@ -30,11 +30,11 @@ impl Logs {
   
   pub fn draw(&mut self, ui: Option<&Ui>) {
     if let Some(ui) = ui {
-      ui.window(im_str!("Error!"))
+      ui.window(im_str!("Error"))
             .size((self.size.x, self.size.y), ImGuiCond::FirstUseEver)
             .position((self.position.x, self.position.y), ImGuiCond::FirstUseEver)
             .build(|| {
-              ui.text("Error: ".to_owned() + &self.last_error);
+              ui.text_wrapped(&ImString::new("Error: ".to_owned() + &self.last_error));
               if ui.button(im_str!("Ok"), (0.0, 0.0)) {
                 self.show = false;
               }

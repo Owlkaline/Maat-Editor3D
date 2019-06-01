@@ -16,6 +16,7 @@ use cgmath::{Vector2, Vector3};
 
 pub use self::load_screen::LoadScreen;
 pub use self::editor_screen::EditorScreen;
+pub use self::editor_screen::GameOptions;
 
 mod load_screen;
 mod editor_screen;
