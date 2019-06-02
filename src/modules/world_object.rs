@@ -17,6 +17,26 @@ use cgmath::{Vector2, Vector3};
 const LOCATION: &str = "./Scenes/";
 const OBJECTS: &str = "/Objects/";
 
+#[macro_export]
+macro_rules! hlua_error {
+  ($result:expr) => (
+    match $result {
+      Err(hlua_e) => {
+        match hlua_e {
+          hlua::LuaError::SyntaxError(e) | hlua::LuaError:: ExecutionError(e) => {
+            Some(e.to_string())
+          },
+          hlua::LuaError::ReadError(io_e) => {
+            Some(io_e.to_string())
+          },
+          _ => {None}
+        }
+      },
+      Ok(_) => {None},
+    }
+  )
+}
+
 pub struct DefaultOptions {
   position: Vector3<f32>,
   size: Vector3<f32>,
@@ -238,7 +258,6 @@ end";
     
     let file_name = self.name.to_owned() + ".lua";
     if let Ok(f) = File::open(&Path::new(&(LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name))) {
-      
       self.update_function = Some(f);
     }
   }
@@ -285,7 +304,7 @@ end";
     self.rotation = self.default_options.rotation;
   }
   
-  pub fn update_game(&mut self, lua: &mut Option<&mut Lua>) {
+  pub fn update_game(&mut self, lua: &mut Option<&mut Lua>, logs: &mut Logs) {
     if self.update_function.is_none() {
       return;
     }
@@ -309,14 +328,20 @@ end";
       lua.set("acc_z", self.acceleration.z);
       
       if let Some(function) = &self.update_function {
-        if let Err(_) = lua.execute_from_reader::<(), _>(function) {
-          // Should never happen
-          return;
+        let reader_result = lua.execute_from_reader::<(), _>(function);
+        if let Some(e) = hlua_error!(reader_result) {
+          logs.add_error(e.to_string());
         }
         
         let function_name = self.name.to_owned() + "update";
-        let mut update: hlua::LuaFunction<_> = lua.get(function_name.to_string()).expect(&("Failed to run ".to_owned() + &function_name.to_string() + "() in file " + &LOCATION.to_string() + &self.directory.to_string() + &OBJECTS.to_string() + &self.name.to_string() + ".lua"));
-        update.call::<()>().unwrap();
+       
+        if let Some(update) = lua.get(function_name.to_string()) {
+          let mut update: hlua::LuaFunction<_> = update;
+          let result = update.call::<()>();
+          if let Some(e) = hlua_error!(result) {
+            logs.add_error(e.to_string());
+          }
+        }
       }
       
       self.position.x = lua.get("x").unwrap();
@@ -476,36 +501,3 @@ end";
                                          self.model.to_string()));
   }
 }
-    /*
-    if let Some(ui) = &ui {
-     ui.window(im_str!("Object Details"))
-        .size((300.0, 300.0), ImGuiCond::FirstUseEver)
-         .build(|| {
-            ui.text(im_str!("Hello world!"));
-            ui.text(im_str!("This...is...imgui-rs!"));
-             ui.separator();
-             let mouse_pos = ui.imgui().mouse_pos();
-             ui.text(im_str!(
-                "Mouse Position: ({:.1},{:.1})",
-                mouse_pos.0,
-                mouse_pos.1
-           ));
-           ui.radio_button_bool(im_str!("Slider"), true);
-           ui.same_line(0.0);
-           ui.radio_button_bool(im_str!("Input"), false);
-           
-           ui.text(im_str!("Position: "));
-           ui.same_line(0.0);
-           ui.drag_float(im_str!(""), &mut 0.0).build();
-           ui.same_line(50.0);
-           ui.drag_float(im_str!(""), &mut 1.0).build();
-           ui.same_line(100.0);
-           ui.drag_float(im_str!(""), &mut 2.0).build();
-           
-           ui.separator();
-           ui.input_float(im_str!("size"), &mut 0.1)
-               //.display_format(im_str!("%.0f"))
-               .build();
-        });
-    }*/
-

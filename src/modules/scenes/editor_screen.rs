@@ -821,7 +821,7 @@ impl Scene for EditorScreen {
         
         let mut i = 0;
         for world_object in &mut self.world_objects {
-          world_object.update_game(&mut lua);
+          world_object.update_game(&mut lua, &mut self.logs);
           
           if i == self.game_options.camera_target {
             self.camera.set_target(world_object.position());
@@ -833,6 +833,7 @@ impl Scene for EditorScreen {
       },
       false => {
         if !self.game_options.first_game_loop {
+          self.options.show_axis = true;
           self.game_options.first_game_loop = true;
         }
         
