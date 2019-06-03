@@ -12,6 +12,8 @@ use std::path::Path;
 use hlua;
 use hlua::Lua;
 
+use open;
+
 use cgmath::{Vector2, Vector3};
 
 const LOCATION: &str = "./Scenes/";
@@ -384,6 +386,14 @@ end";
             imstr_script.push_str(&txt);
             ui.text(imstr_script);
             ui.same_line(0.0);
+            if ui.button(im_str!("Open"), (0.0, 0.0)) {
+              let file_name = self.name.to_owned() + ".lua";
+               
+              let file = LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name;
+              if let Err(e) = open::that(file) {
+                logs.add_error(e.to_string());
+              }
+            }
             if ui.button(im_str!("Delete Script"), (0.0, 0.0)) {
               self.delete_script(logs);
             }

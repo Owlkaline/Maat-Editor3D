@@ -5,6 +5,7 @@ extern crate cgmath;
 extern crate rand;
 extern crate csv;
 extern crate hlua;
+extern crate open;
 
 use hlua::Lua;
 use maat_graphics::imgui::*;
