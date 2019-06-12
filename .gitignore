@@ -26,7 +26,7 @@ x64/
 ~*
 testrun/
 settings.ini
-
+log.ini
 
 Trephination.iml
 .idea

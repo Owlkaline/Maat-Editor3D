@@ -25,6 +25,23 @@ const CAMERA_DEFAULT_PITCH: f32 = -62.27426;
 const CAMERA_DEFAULT_YAW: f32 = 210.10083;
 const CAMERA_DEFAULT_SPEED: f32 = 50.0;
 
+#[derive(Clone)]
+pub struct Light {
+  pos: Vector3<f32>,
+  colour: Vector3<f32>,
+  intensity: f32,
+}
+
+impl Light {
+  pub fn new() -> Light {
+    Light {
+      pos: Vector3::new(0.0, 0.0, 0.0),
+      colour: Vector3::new(1.0, 1.0, 1.0),
+      intensity: 100.0,
+    }
+  }
+}
+
 enum MouseState {
   Ui,
   World,
@@ -37,6 +54,7 @@ pub struct EditorWindows {
   loaded_models: bool,
   scene_details: bool,
   camera_options: bool,
+  lights: bool,
   load_window: bool,
   saved: bool,
   error_window: bool,
@@ -47,6 +65,7 @@ pub struct EditorOptions {
   snap_to_grid: bool,
   show_axis: bool,
   place_with_mouse: bool,
+  instanced_option: i32,
 }
 
 #[derive(Clone)]
@@ -68,6 +87,7 @@ impl EditorWindows {
       loaded_models: true,
       scene_details: true,
       camera_options: true,
+      lights: true,
       load_window: true,
       saved: false,
       error_window: false,
@@ -81,6 +101,7 @@ impl EditorOptions {
       snap_to_grid: false,
       show_axis: true,
       place_with_mouse: true,
+      instanced_option: 0,
     }
   }
 }
@@ -121,6 +142,9 @@ pub struct EditorScreen {
   windows: EditorWindows,
   options: EditorOptions,
   game_options: GameOptions,
+  light: Light,
+  instanced_buffers: Vec<String>,
+  instanced_buffers_added: Vec<String>,
 }
 
 impl EditorScreen {
@@ -157,10 +181,13 @@ impl EditorScreen {
       windows: EditorWindows::new(),
       options: EditorOptions::new(),
       game_options: GameOptions::new(),
+      light: Light::new(),
+      instanced_buffers: Vec::new(),
+      instanced_buffers_added: Vec::new(),
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, light: Light, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>, instanced_buffers: Vec<String>) -> EditorScreen {
     
     let mut logs = Logs::new(window_size);
     
@@ -186,6 +213,9 @@ impl EditorScreen {
       windows,
       options,
       game_options,
+      light,
+      instanced_buffers,
+      instanced_buffers_added: Vec::new(),
     }
   }
   
@@ -504,6 +534,7 @@ impl EditorScreen {
           ui.menu_item(im_str!("Loaded Models")).selected(&mut self.windows.loaded_models).build();
           ui.menu_item(im_str!("World Objects")).selected(&mut self.windows.world_objects).build();
           ui.menu_item(im_str!("Camera Options")).selected(&mut self.windows.camera_options).build();
+          ui.menu_item(im_str!("Light Options")).selected(&mut self.windows.lights).build();
         });
       });
       
@@ -614,20 +645,24 @@ impl EditorScreen {
                 for i in 0..self.known_models.len() {
                   let mut model_loaded = self.known_models[i].2;
                   ui.text(im_str!("{}", self.known_models[i].0));
-                  ui.same_line(0.0);
-                  ui.checkbox(im_str!("##{}", i), &mut model_loaded);
-                  if !self.known_models[i].2 && model_loaded {
-                    let reference = self.known_models[i].0.to_string();
-                    let location = self.known_models[i].1.to_string();
-                    self.mut_data().models_to_load.push((reference, location));
+                  
+                  //ui.checkbox(im_str!("##{}", i), &mut model_loaded);
+                  if !self.known_models[i].2 {
+                    ui.same_line(0.0);
+                    if ui.button(im_str!("Load##{}", i), (0.0, 0.0)) {
+                      let reference = self.known_models[i].0.to_string();
+                      let location = self.known_models[i].1.to_string();
+                      self.mut_data().models_to_load.push((reference, location));
+                    }
                   }
+                  /*
                   if self.known_models[i].2 {
                     ui.same_line(0.0);
                     if ui.button(im_str!("Unload"), (0.0, 0.0)) { 
                       self.data.models_to_unload.push(self.known_models[i].0.to_string());
                       self.known_models[i].2 = false;
                     }
-                  }
+                  }*/
                 }
               });
           });
@@ -723,6 +758,102 @@ impl EditorScreen {
           });
       }
       
+      if !self.windows.lights {
+        ui.window(im_str!("Light Options"))
+            .always_auto_resize(true)
+            .size((200.0, 200.0), ImGuiCond::FirstUseEver)
+            .position((self.data.window_dim.x - 500.0, 200.0), ImGuiCond::FirstUseEver)
+            .build(|| {
+              ui.new_line();
+              ui.text(im_str!("Position"));
+              
+              ui.columns(3, im_str!("x | y | z"), true);
+              ui.text(im_str!("x:"));
+              ui.same_line(0.0);
+              ui.input_float(im_str!("##x"), &mut self.light.pos.x).build();
+              ui.next_column();
+              ui.text(im_str!("y:"));
+              ui.same_line(0.0);
+              ui.input_float(im_str!("##y"), &mut self.light.pos.y).build();
+              ui.next_column();
+              ui.text(im_str!("z:"));
+              ui.same_line(0.0);
+              ui.input_float(im_str!("##z"), &mut self.light.pos.z).build();
+              ui.columns(1, im_str!(""), false);
+              ui.new_line();
+              ui.text(im_str!("Intensity:"));
+              ui.same_line(0.0);
+              ui.slider_float(im_str!(""), &mut self.light.intensity, 0.1, 1000.0).build();
+              ui.new_line();
+              ui.tree_node(im_str!("Light Colour")).build(|| {
+                let mut colour = [self.light.colour.x, self.light.colour.y, self.light.colour.z];
+                ui.color_picker(im_str!("Colour"), &mut colour).build();
+                self.light.colour = Vector3::new(colour[0], colour[1], colour[2]);
+              });
+        });
+      }
+      
+       ui.window(im_str!("Instanced Options"))
+            .always_auto_resize(true)
+            .size((200.0, 200.0), ImGuiCond::FirstUseEver)
+            .position((self.data.window_dim.x - 500.0, 200.0), ImGuiCond::FirstUseEver)
+            .build(|| {
+                            
+              ui.text("Existing Buffers");
+              let mut offset = 0;
+              for i in 0..self.instanced_buffers.len() {
+                if i < offset {
+                  break;
+                }
+                
+                ui.text(&self.instanced_buffers[i-offset].to_string());
+                ui.same_line(0.0);
+                if ui.button(im_str!("Remove##{}",i), (0.0, 0.0)) {
+                  let buffer = self.instanced_buffers.remove(i-offset);
+                  offset += 1;
+                  for objects in &mut self.world_objects {
+                    objects.instanced_buffer_removed(buffer.to_string());
+                  }
+                }
+              }
+              
+              ui.push_item_width(190.0);
+              if self.data.model_sizes.len() != self.instanced_buffers.len() {
+                let mut items = self.data.model_sizes.clone().into_iter().map(|model| {
+                    ImString::new(model.0)
+                  }).collect::<Vec<ImString>>();
+                
+                let mut offset = 0;
+                for i in 0..items.len() {
+                  if i < offset {
+                    break;
+                  }
+                  
+                  if self.instanced_buffers.contains(&items[i-offset].to_str().to_string()) {
+                    items.remove(i-offset);
+                    offset+=1;
+                  }
+                }
+                
+                let items: Vec<_> = items.iter().map(|p| 
+                    p.as_ref()
+                ).collect();
+                
+                ui.combo(im_str!("##"), &mut self.options.instanced_option, 
+                  &items[..], -1);
+                ui.same_line(0.0);
+                if self.options.instanced_option > items.len() as i32-1 {
+                  self.options.instanced_option = items.len() as i32-1;
+                }
+                
+                if ui.button(im_str!("Add Buffer"), (0.0, 0.0)) {
+                  // Actually add buffer
+                  
+                  self.instanced_buffers_added.push(items[self.options.instanced_option as usize].to_str().to_string());
+                }
+              }
+      });
+      
       if self.windows.saved {
         ui.window(im_str!("Scene Saved!"))
           .position((self.data.window_dim.x*0.5, self.data.window_dim.y*0.5), ImGuiCond::FirstUseEver)
@@ -750,7 +881,9 @@ impl Scene for EditorScreen {
     if self.data().window_resized {
       Box::new(EditorScreen::new_with_data(window_size, self.rng.clone(), self.camera.clone(), 
                                            self.object_being_placed.clone(), self.scene_name.to_string(), 
-                                           self.placing_height, self.world_objects.clone(), self.windows.clone(), self.options.clone(), self.game_options.clone(), self.run_game, self.data.model_sizes.clone()))
+                                           self.placing_height, self.world_objects.clone(), self.light.clone(), 
+                                           self.windows.clone(), self.options.clone(), self.game_options.clone(),
+                                           self.run_game, self.data.model_sizes.clone(), self.instanced_buffers.clone()))
     } else {
       Box::new(EditorScreen::new(window_size, self.data.model_sizes.clone()))
     }
@@ -760,6 +893,12 @@ impl Scene for EditorScreen {
     if self.data.window_resized {
       self.data.next_scene = true;
     }
+    
+    for buffer in &self.instanced_buffers_added {
+      self.instanced_buffers.push(buffer.to_string());
+    }
+    
+    self.instanced_buffers_added.clear();
     
     {
       let f6_pressed = self.data().keys.f6_pressed();
@@ -879,11 +1018,11 @@ impl Scene for EditorScreen {
         }
             
         if let Some(object) = &mut self.object_being_placed {
-          object.update(ui, self.data.window_dim, delta_time, &mut self.logs);
+          object.update(ui, &self.instanced_buffers, self.data.window_dim, delta_time, &mut self.logs);
         }
         
         if self.object_selected > 1 {
-          self.world_objects[self.object_selected as usize-2].update(ui, self.data.window_dim, delta_time, &mut self.logs);
+          self.world_objects[self.object_selected as usize-2].update(ui, &self.instanced_buffers, self.data.window_dim, delta_time, &mut self.logs);
         }
       }
     }
@@ -906,7 +1045,11 @@ impl Scene for EditorScreen {
   /*  if self.update_mouse_cursor {
       draw_calls.push(DrawCall::set_cursor_position(self.last_mouse_pos.x, self.last_mouse_pos.y));
     }*/
+    for buffer in &self.instanced_buffers_added {
+      draw_calls.push(DrawCall::add_instanced_model_buffer(buffer.to_string()));
+    }
     
+    draw_calls.push(DrawCall::set_light(self.light.pos, self.light.colour, self.light.intensity));
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
     
     let mut i = 0;
@@ -943,6 +1086,10 @@ impl Scene for EditorScreen {
                                            axis_size,
                                            rot_z_size,
                                            axis.to_string()));
+    }
+    
+    for buffer in &self.instanced_buffers {
+      draw_calls.push(DrawCall::draw_instanced_model(buffer.to_string()));
     }
   }
 }

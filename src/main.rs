@@ -1,4 +1,3 @@
-extern crate winit;
 extern crate maat_graphics;
 extern crate maat_input_handler;
 extern crate cgmath;
@@ -9,6 +8,7 @@ extern crate open;
 
 use hlua::Lua;
 use maat_graphics::imgui::*;
+pub use maat_graphics::winit;
 
 mod modules;
 

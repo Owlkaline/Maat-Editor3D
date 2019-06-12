@@ -1,4 +1,6 @@
 use maat_graphics::imgui::*;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 use cgmath::Vector2;
 
@@ -7,15 +9,20 @@ pub struct Logs {
   size: Vector2<f32>,
   show: bool,
   last_error: String,
+  error_log: BufWriter<File>,
 }
 
 impl Logs {
   pub fn new(window_size: Vector2<f32>) -> Logs {
+    let f = File::create("./log.ini").expect("Error: Failed to create settings file");
+    let f = BufWriter::new(f);
+    
     Logs {
       position: window_size*0.5,
       size: Vector2::new(400.0, 200.0),
       show: false,
       last_error: "No Errors".to_string(),
+      error_log: f,
     }
   }
   
@@ -24,7 +31,10 @@ impl Logs {
   }
   
   pub fn add_error(&mut self, err: String) {
-    self.last_error = err;
+    self.last_error = err.to_string();
+    if let Err(_) = self.error_log.write(&(err.to_owned() + "\n").as_bytes()) {
+      println!("Writting logs failed");
+    }
     self.show = true;
   }
   
@@ -42,3 +52,4 @@ impl Logs {
     }
   }
 }
+

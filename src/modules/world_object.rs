@@ -75,6 +75,8 @@ pub struct WorldObject {
   has_script: bool,
   update_function: Option<File>,
   default_options: DefaultOptions,
+  
+  instanced_buffer: bool,
 }
 
 impl Clone for WorldObject {
@@ -110,6 +112,8 @@ impl WorldObject {
       has_script: false,
       update_function: None,
       default_options: DefaultOptions::new(Vector3::new(0.0, 0.0, 0.0), Vector3::new(1.0, 1.0, 1.0),Vector3::new(0.0, 0.0, 0.0)),
+      
+      instanced_buffer: false,
     }
   }
   
@@ -141,6 +145,8 @@ impl WorldObject {
       has_script,
       update_function: function,
       default_options: DefaultOptions::new(position, size, rotation),
+      
+      instanced_buffer: false,
     };
     
     object
@@ -264,6 +270,12 @@ end";
     }
   }
   
+  pub fn instanced_buffer_removed(&mut self, reference: String) {
+    if self.model.to_string() == reference {
+      self.instanced_buffer = false;
+    }
+  }
+  
   pub fn _get_id(&mut self) -> i64 {
     self.reference_num as i64
   }
@@ -364,10 +376,12 @@ end";
     }
   }
   
-  pub fn update(&mut self, ui: Option<&Ui>, window_dim: Vector2<f32>, _delta_time: f32, logs: &mut Logs) {
+  pub fn update(&mut self, ui: Option<&Ui>, instanced_buffers: &Vec<String>, window_dim: Vector2<f32>, _delta_time: f32, logs: &mut Logs) {
      self.position = self.default_options.position;
      self.size = self.default_options.size;
      self.rotation = self.default_options.rotation;
+     
+     let show_instanced_option = instanced_buffers.contains(&self.model.to_string());
      
      if let Some(ui) = &ui {
        let ui_window_size = (450.0, 200.0);
@@ -405,6 +419,10 @@ end";
           ui.text("Name:");
           ui.same_line(0.0);
           ui.input_text(im_str!(""), &mut imstr_name).build();
+          if show_instanced_option {
+            ui.checkbox(im_str!(" Instance render"), &mut self.instanced_buffer);
+          }
+          
           ui.text(im_str!(
             "Position: ({:.1},{:.1},{:.1})",
             self.position.x,
@@ -501,13 +519,24 @@ end";
   }
   
   pub fn draw_hologram(&self, draw_calls: &mut Vec<DrawCall>) {
-    draw_calls.push(DrawCall::draw_hologram_model(self.position, self.size, self.rotation, self.model.to_string()));
+    if self.instanced_buffer {
+      draw_calls.push(DrawCall::add_instanced_hologram_model(self.model.to_string(), self.position, self.size, self.rotation));
+    } else {
+      draw_calls.push(DrawCall::draw_hologram_model(self.position, self.size, self.rotation, self.model.to_string()));
+    }
   }
   
   pub fn draw(&self, draw_calls: &mut Vec<DrawCall>) {
-    draw_calls.push(DrawCall::draw_model(self.position,
-                                         self.size,
-                                         self.rotation,
-                                         self.model.to_string()));
+    if self.instanced_buffer {
+       draw_calls.push(DrawCall::add_instanced_model(self.model.to_string(), 
+                                                     self.position,
+                                                     self.size,
+                                                     self.rotation));
+    } else {
+      draw_calls.push(DrawCall::draw_model(self.position,
+                                           self.size,
+                                           self.rotation,
+                                           self.model.to_string()));
+    }
   }
 }

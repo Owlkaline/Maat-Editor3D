@@ -8,9 +8,9 @@ use hlua::Lua;
 
 use std::vec::Vec;
 
-use winit;
-use winit::MouseScrollDelta::LineDelta;
-use winit::MouseScrollDelta::PixelDelta;
+use maat_graphics::winit;
+use maat_graphics::winit::MouseScrollDelta::LineDelta;
+use maat_graphics::winit::MouseScrollDelta::PixelDelta;
 
 use cgmath::{Vector2, Vector3};
 
