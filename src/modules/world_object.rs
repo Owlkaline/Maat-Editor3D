@@ -152,6 +152,16 @@ impl WorldObject {
     object
   }
   
+  pub fn new_with_data(reference_num: u32, object_name: String, directory: String, model: String, location: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>, instanced: bool) -> WorldObject {
+    let mut object = WorldObject::new_with_name(reference_num, object_name, directory.to_string(), model, location,
+                                                position,
+                                                rotation,
+                                                size);
+    object.instanced_buffer = instanced;
+    
+    object
+  }
+  
   pub fn _new(reference_num: u32, model: String, location: String, directory: String, position: Vector3<f32>, rotation: Vector3<f32>, size: Vector3<f32>) -> WorldObject {
     let object_name  = model.to_owned() + &reference_num.to_string();
     
@@ -274,6 +284,10 @@ end";
     if self.model.to_string() == reference {
       self.instanced_buffer = false;
     }
+  }
+  
+  pub fn instanced_rendered(&self) -> bool {
+    self.instanced_buffer
   }
   
   pub fn _get_id(&mut self) -> i64 {

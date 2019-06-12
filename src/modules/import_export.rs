@@ -61,12 +61,13 @@ pub fn export(scene_name: String, world_objects: &Vec<WorldObject>, camera_detai
   
   match csv::Writer::from_path("./Scenes/".to_owned() + &scene_name + "/" + &scene_name + ".csv") {
     Ok(mut file) => {
-      file.write_record(&["id", "name", "model", "location", "x", "y", "z", "rot_x", "rot_y", "rot_z", "size_x", "size_y", "size_z"]).unwrap();
+      file.write_record(&["id", "name", "model", "location", "instanced", "x", "y", "z", "rot_x", "rot_y", "rot_z", "size_x", "size_y", "size_z"]).unwrap();
       for object in world_objects {
         let id = object.id().to_string();
         let name = object.name().to_string();
         let model = object.model();
         let location = object.location();
+        let instanced = object.instanced_rendered().to_string();
         let x = object.position().x.to_string();
         let y = object.position().y.to_string();
         let z = object.position().z.to_string();
@@ -76,7 +77,7 @@ pub fn export(scene_name: String, world_objects: &Vec<WorldObject>, camera_detai
         let size_x = object.size().x.to_string();
         let size_y = object.size().y.to_string();
         let size_z = object.size().z.to_string();
-        if let Err(e) = file.write_record(&[id, name, model, location, x, y, z, rot_x, rot_y, rot_z, size_x, size_y, size_z]) {
+        if let Err(e) = file.write_record(&[id, name, model, location, instanced, x, y, z, rot_x, rot_y, rot_z, size_x, size_y, size_z]) {
           logs.add_error(e.to_string());
         }
       }
@@ -124,15 +125,16 @@ pub fn import(scene_name: String, logs: &mut Logs) -> (Vec<(String, String)>, Ve
             let name: String = object[1].parse().unwrap();
             let model: String = object[2].parse().unwrap();
             let location: String = object[3].parse().unwrap();
-            let x: f32 = object[4].parse().unwrap();
-            let y: f32 = object[5].parse().unwrap();
-            let z: f32 = object[6].parse().unwrap();
-            let rot_x: f32 = object[7].parse().unwrap();
-            let rot_y: f32 = object[8].parse().unwrap();
-            let rot_z: f32 = object[9].parse().unwrap();
-            let size_x: f32 = object[10].parse().unwrap();
-            let size_y: f32 = object[11].parse().unwrap();
-            let size_z: f32 = object[12].parse().unwrap();
+            let instanced: bool = object[4].parse().unwrap();
+            let x: f32 = object[5].parse().unwrap();
+            let y: f32 = object[6].parse().unwrap();
+            let z: f32 = object[7].parse().unwrap();
+            let rot_x: f32 = object[8].parse().unwrap();
+            let rot_y: f32 = object[9].parse().unwrap();
+            let rot_z: f32 = object[10].parse().unwrap();
+            let size_x: f32 = object[11].parse().unwrap();
+            let size_y: f32 = object[12].parse().unwrap();
+            let size_z: f32 = object[13].parse().unwrap();
             
             let mut unique = true;
             for i in 0..used_models.len() {
@@ -146,10 +148,11 @@ pub fn import(scene_name: String, logs: &mut Logs) -> (Vec<(String, String)>, Ve
               used_models.push((model.to_string(), location.to_string()));
             }
             
-            world_objects.push(WorldObject::new_with_name(id, name, scene_name.to_string(), model, location,
+            world_objects.push(WorldObject::new_with_data(id, name, scene_name.to_string(), model, location,
                                                 Vector3::new(x, y, z),
                                                 Vector3::new(rot_x, rot_y, rot_z),
-                                                Vector3::new(size_x, size_y, size_z)));
+                                                Vector3::new(size_x, size_y, size_z),
+                                                instanced));
           },
           Err(e) => {
             logs.add_error("Scene details data:".to_owned() + &e.to_string());

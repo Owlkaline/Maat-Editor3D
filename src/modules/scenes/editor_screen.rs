@@ -36,8 +36,8 @@ impl Light {
   pub fn new() -> Light {
     Light {
       pos: Vector3::new(0.0, 0.0, 0.0),
-      colour: Vector3::new(1.0, 1.0, 1.0),
-      intensity: 100.0,
+      colour: Vector3::new(1.0, 0.0, 0.0),
+      intensity: 200.0,
     }
   }
 }
@@ -498,6 +498,13 @@ impl EditorScreen {
           path.remove(0);
           path.remove(0);
           let (load_models, objects, game_options) = import(path.to_string(), &mut self.logs);
+          for object in &objects {
+            if object.instanced_rendered() {
+              if !self.instanced_buffers_added.contains(&object.model().to_string()) {
+                self.instanced_buffers_added.push(object.model().to_string());
+              }
+            }
+          }
           self.world_objects = objects;
           self.data.models_to_load = load_models;
           self.game_options = game_options;
