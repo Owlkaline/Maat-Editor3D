@@ -7,6 +7,7 @@ use hlua::Lua;
 use crate::modules::scenes::Scene;
 use crate::modules::scenes::SceneData;
 use crate::modules::WorldObject;
+use crate::modules::LightObject;
 use crate::modules::import_export;
 use crate::modules::import_export::{import, export};
 use crate::modules::Logs;
@@ -128,6 +129,7 @@ pub struct EditorScreen {
   placing_height: f32,
   object_being_placed: Option<WorldObject>,
   world_objects: Vec<WorldObject>,
+  light_objects: Vec<LightObject>,
   mouse_state: MouseState,
   selected_model: i32,
   object_selected: i32,
@@ -142,7 +144,6 @@ pub struct EditorScreen {
   windows: EditorWindows,
   options: EditorOptions,
   game_options: GameOptions,
-  light: Light,
   instanced_buffers: Vec<String>,
   instanced_buffers_added: Vec<String>,
 }
@@ -167,6 +168,7 @@ impl EditorScreen {
       placing_height: 0.0,
       object_being_placed: None,
       world_objects: Vec::new(),
+      light_objects: Vec::new(),
       mouse_state: MouseState::World,
       selected_model: 0,
       object_selected: 0,
@@ -181,13 +183,12 @@ impl EditorScreen {
       windows: EditorWindows::new(),
       options: EditorOptions::new(),
       game_options: GameOptions::new(),
-      light: Light::new(),
       instanced_buffers: Vec::new(),
       instanced_buffers_added: Vec::new(),
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, light: Light, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>, instanced_buffers: Vec<String>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, light_objects: Vec<LightObject>, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>, instanced_buffers: Vec<String>) -> EditorScreen {
     
     let mut logs = Logs::new(window_size);
     
@@ -199,6 +200,7 @@ impl EditorScreen {
       placing_height,
       object_being_placed,
       world_objects,
+      light_objects,
       mouse_state: MouseState::World,
       selected_model: 0,
       object_selected: 0,
@@ -213,7 +215,6 @@ impl EditorScreen {
       windows,
       options,
       game_options,
-      light,
       instanced_buffers,
       instanced_buffers_added: Vec::new(),
     }
@@ -765,41 +766,6 @@ impl EditorScreen {
           });
       }
       
-      if !self.windows.lights {
-        ui.window(im_str!("Light Options"))
-            .always_auto_resize(true)
-            .size((200.0, 200.0), ImGuiCond::FirstUseEver)
-            .position((self.data.window_dim.x - 500.0, 200.0), ImGuiCond::FirstUseEver)
-            .build(|| {
-              ui.new_line();
-              ui.text(im_str!("Position"));
-              
-              ui.columns(3, im_str!("x | y | z"), true);
-              ui.text(im_str!("x:"));
-              ui.same_line(0.0);
-              ui.input_float(im_str!("##x"), &mut self.light.pos.x).build();
-              ui.next_column();
-              ui.text(im_str!("y:"));
-              ui.same_line(0.0);
-              ui.input_float(im_str!("##y"), &mut self.light.pos.y).build();
-              ui.next_column();
-              ui.text(im_str!("z:"));
-              ui.same_line(0.0);
-              ui.input_float(im_str!("##z"), &mut self.light.pos.z).build();
-              ui.columns(1, im_str!(""), false);
-              ui.new_line();
-              ui.text(im_str!("Intensity:"));
-              ui.same_line(0.0);
-              ui.slider_float(im_str!(""), &mut self.light.intensity, 0.1, 1000.0).build();
-              ui.new_line();
-              ui.tree_node(im_str!("Light Colour")).build(|| {
-                let mut colour = [self.light.colour.x, self.light.colour.y, self.light.colour.z];
-                ui.color_picker(im_str!("Colour"), &mut colour).build();
-                self.light.colour = Vector3::new(colour[0], colour[1], colour[2]);
-              });
-        });
-      }
-      
        ui.window(im_str!("Instanced Options"))
             .always_auto_resize(true)
             .size((200.0, 200.0), ImGuiCond::FirstUseEver)
@@ -888,7 +854,7 @@ impl Scene for EditorScreen {
     if self.data().window_resized {
       Box::new(EditorScreen::new_with_data(window_size, self.rng.clone(), self.camera.clone(), 
                                            self.object_being_placed.clone(), self.scene_name.to_string(), 
-                                           self.placing_height, self.world_objects.clone(), self.light.clone(), 
+                                           self.placing_height, self.world_objects.clone(), self.light_objects.clone(), 
                                            self.windows.clone(), self.options.clone(), self.game_options.clone(),
                                            self.run_game, self.data.model_sizes.clone(), self.instanced_buffers.clone()))
     } else {
@@ -1056,8 +1022,11 @@ impl Scene for EditorScreen {
       draw_calls.push(DrawCall::add_instanced_model_buffer(buffer.to_string()));
     }
     
-    draw_calls.push(DrawCall::set_light(self.light.pos, self.light.colour, self.light.intensity));
     draw_calls.push(DrawCall::set_camera(self.camera.clone()));
+    
+    for light_object in &self.light_objects {
+      light_object.draw(draw_calls);
+    }
     
     let mut i = 0;
     for world_object in &self.world_objects {
