@@ -3,7 +3,7 @@ use maat_graphics::imgui::*;
 
 use crate::modules::Logs;
 
-use cgmath::{Vector2, Vector3};
+use crate::cgmath::{Vector2, Vector3};
 
 #[derive(Clone)]
 pub struct LightObject {

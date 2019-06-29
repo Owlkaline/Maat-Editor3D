@@ -12,7 +12,7 @@ use maat_graphics::winit;
 use maat_graphics::winit::MouseScrollDelta::LineDelta;
 use maat_graphics::winit::MouseScrollDelta::PixelDelta;
 
-use cgmath::{Vector2, Vector3};
+use crate::cgmath::{Vector2, Vector3};
 
 pub use self::load_screen::LoadScreen;
 pub use self::editor_screen::EditorScreen;

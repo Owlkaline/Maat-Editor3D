@@ -4,7 +4,7 @@ use crate::modules::WorldObject;
 use crate::modules::scenes::GameOptions;
 use crate::modules::Logs;
 
-use cgmath::Vector3;
+use crate::cgmath::Vector3;
 
 use std::fs::File;
 use std::fs;

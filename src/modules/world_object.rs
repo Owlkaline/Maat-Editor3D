@@ -14,7 +14,7 @@ use hlua::Lua;
 
 use open;
 
-use cgmath::{Vector2, Vector3};
+use crate::cgmath::{Vector2, Vector3};
 
 const LOCATION: &str = "./Scenes/";
 const OBJECTS: &str = "/Objects/";

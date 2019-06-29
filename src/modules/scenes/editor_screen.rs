@@ -1,5 +1,5 @@
 use maat_graphics::DrawCall;
-use maat_graphics::camera;
+use maat_graphics::camera::PerspectiveCamera;
 use maat_graphics::imgui::*;
 
 use hlua::Lua;
@@ -15,7 +15,7 @@ use crate::modules::Logs;
 use rand;
 use rand::{thread_rng};
 
-use cgmath::{Vector2, Vector3};
+use crate::cgmath::{Vector2, Vector3};
 
 use std::fs;
 
@@ -124,7 +124,7 @@ impl GameOptions {
 pub struct EditorScreen {
   data: SceneData,
   rng: rand::prelude::ThreadRng,
-  camera: camera::Camera,
+  camera: PerspectiveCamera,
   last_mouse_pos: Vector2<f32>,
   placing_height: f32,
   object_being_placed: Option<WorldObject>,
@@ -152,7 +152,7 @@ impl EditorScreen {
   pub fn new(window_size: Vector2<f32>, model_sizes: Vec<(String, Vector3<f32>)>) -> EditorScreen {
     let rng =  thread_rng();
     
-    let mut camera = camera::Camera::default_vk();
+    let mut camera = PerspectiveCamera::default_vk();
     camera.set_position(Vector3::new(CAMERA_DEFAULT_X, CAMERA_DEFAULT_Y, CAMERA_DEFAULT_Z));
     camera.set_pitch(CAMERA_DEFAULT_PITCH);
     camera.set_yaw(CAMERA_DEFAULT_YAW);
@@ -188,7 +188,7 @@ impl EditorScreen {
     }
   }
   
-  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: camera::Camera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, light_objects: Vec<LightObject>, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>, instanced_buffers: Vec<String>) -> EditorScreen {
+  pub fn new_with_data(window_size: Vector2<f32>, rng: rand::prelude::ThreadRng, camera: PerspectiveCamera, object_being_placed: Option<WorldObject>, scene_name: String, placing_height: f32, world_objects: Vec<WorldObject>, light_objects: Vec<LightObject>, windows: EditorWindows, options: EditorOptions, game_options: GameOptions, run_game: bool, model_sizes: Vec<(String, Vector3<f32>)>, instanced_buffers: Vec<String>) -> EditorScreen {
     
     let mut logs = Logs::new(window_size);
     
@@ -403,7 +403,7 @@ impl EditorScreen {
     self.load_scene_option = 0;
     self.windows.load_window = false;
     
-    self.camera = camera::Camera::default_vk();
+    self.camera = PerspectiveCamera::default_vk();
     self.camera.set_position(Vector3::new(CAMERA_DEFAULT_X, CAMERA_DEFAULT_Y, CAMERA_DEFAULT_Z));
     self.camera.set_pitch(CAMERA_DEFAULT_PITCH);
     self.camera.set_yaw(CAMERA_DEFAULT_YAW);

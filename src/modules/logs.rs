@@ -2,7 +2,7 @@ use maat_graphics::imgui::*;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-use cgmath::Vector2;
+use crate::cgmath::Vector2;
 
 pub struct Logs {
   position: Vector2<f32>,

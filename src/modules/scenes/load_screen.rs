@@ -7,7 +7,7 @@ use crate::modules::scenes::EditorScreen;
 
 use hlua::Lua;
 
-use cgmath::{Vector2, Vector4};
+use crate::cgmath::{Vector2, Vector4};
 
 const LOGO_TIMER: f32 = 1.5;
 
@@ -78,7 +78,7 @@ impl Scene for LoadScreen {
     draw_calls.push(
       DrawCall::draw_textured(Vector2::new(width*0.45, height*0.6), 
                               Vector2::new(500.0, 500.0),
-                              90.0,
+                              0.0,
                               String::from("Logo"))
     );
     
