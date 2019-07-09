@@ -398,14 +398,14 @@ end";
      let show_instanced_option = instanced_buffers.contains(&self.model.to_string());
      
      if let Some(ui) = &ui {
-       let ui_window_size = (450.0, 200.0);
+       let ui_window_size = [450.0, 200.0];
        
        let mut imstr_name = ImString::with_capacity(32);
        imstr_name.push_str(&self.name);
        
        ui.window(im_str!("Object Being Placed"))
-       .size(ui_window_size, ImGuiCond::FirstUseEver)
-       .position((window_dim.x-ui_window_size.0-20.0, 432.0), ImGuiCond::FirstUseEver)
+       .size(ui_window_size, Condition::Appearing)
+       .position([window_dim.x-ui_window_size[0]-20.0, 432.0], Condition::Appearing)
        //.always_auto_resize(true)
        .build(|| {
           if self.has_script {
@@ -414,7 +414,7 @@ end";
             imstr_script.push_str(&txt);
             ui.text(imstr_script);
             ui.same_line(0.0);
-            if ui.button(im_str!("Open"), (0.0, 0.0)) {
+            if ui.button(im_str!("Open"), [0.0, 0.0]) {
               let file_name = self.name.to_owned() + ".lua";
                
               let file = LOCATION.to_owned() + &self.directory.to_string() + &OBJECTS.to_string() + &file_name;
@@ -422,11 +422,11 @@ end";
                 logs.add_error(e.to_string());
               }
             }
-            if ui.button(im_str!("Delete Script"), (0.0, 0.0)) {
+            if ui.button(im_str!("Delete Script"), [0.0, 0.0]) {
               self.delete_script(logs);
             }
           } else {
-            if ui.button(im_str!("Create Script"), (0.0, 0.0)) {
+            if ui.button(im_str!("Create Script"), [0.0, 0.0]) {
               self.create_script(logs);
             }
           }

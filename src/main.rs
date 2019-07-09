@@ -70,6 +70,7 @@ fn main() {
   
   let mut delta_time;
   let mut last_time = time::Instant::now();
+  let mut imgui_time = time::Instant::now();
   
   let mut done = false;
   let mut dimensions;
@@ -109,8 +110,9 @@ fn main() {
     
     game.set_window_dimensions(dimensions);
     
-    let frame_size = graphics.imgui_window(&mut imgui);
-    let ui = imgui.frame(frame_size, delta_time as f32);
+    graphics.prepare_imgui_ui(Some(&mut imgui));
+    imgui_time = imgui.io_mut().update_delta_time(imgui_time);
+    let ui = imgui.frame();
     
     game.draw(&mut draw_calls);
     game.update(Some(&ui),  Some(&mut lua), delta_time as f32);

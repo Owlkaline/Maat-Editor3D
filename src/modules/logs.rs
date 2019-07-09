@@ -41,11 +41,11 @@ impl Logs {
   pub fn draw(&mut self, ui: Option<&Ui>) {
     if let Some(ui) = ui {
       ui.window(im_str!("Error"))
-            .size((self.size.x, self.size.y), ImGuiCond::FirstUseEver)
-            .position((self.position.x, self.position.y), ImGuiCond::FirstUseEver)
+            .size([self.size.x, self.size.y], Condition::Appearing)
+            .position([self.position.x, self.position.y], Condition::Appearing)
             .build(|| {
               ui.text_wrapped(&ImString::new("Error: ".to_owned() + &self.last_error));
-              if ui.button(im_str!("Ok"), (0.0, 0.0)) {
+              if ui.button(im_str!("Ok"), [0.0, 0.0]) {
                 self.show = false;
               }
             });

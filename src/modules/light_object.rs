@@ -43,12 +43,12 @@ impl LightObject {
     self.position = pos;
   }
   
-  pub fn update(&mut self, ui: Option<&Ui>,window_dim: Vector2<f32>, _delta_time: f32, logs: &mut Logs) {
+  pub fn update(&mut self, ui: Option<&Ui>,window_dim: Vector2<f32>, _delta_time: f32, _logs: &mut Logs) {
      if let Some(ui) = &ui {
         ui.window(im_str!("Light Options"))
             .always_auto_resize(true)
-            .size((200.0, 200.0), ImGuiCond::FirstUseEver)
-            .position((window_dim.x - 500.0, 200.0), ImGuiCond::FirstUseEver)
+            .size([200.0, 200.0], Condition::Appearing)
+            .position([window_dim.x - 500.0, 200.0], Condition::Appearing)
             .build(|| {
               ui.new_line();
               ui.text(im_str!("Position"));

@@ -453,22 +453,22 @@ impl EditorScreen {
         let mut should_cancel = false;
         let mut new = false;
         ui.window(im_str!("Load Scene"))
-          .size((500.0, 100.0), ImGuiCond::FirstUseEver)
+          .size([500.0, 100.0], Condition::Appearing)
           .always_auto_resize(true)
           .collapsible(false)
           .build( || {
             let items: Vec<_> = scenes.iter().map(|p| 
-              p.as_ref()
+              p//.as_ref()
             ).collect();
             
             ui.text("Scene: ");
             ui.same_line(0.0);
             ui.combo(im_str!(""), &mut self.load_scene_option, &items[..], -1);
-            should_cancel = ui.button(im_str!("Cancel"), (0.0, 0.0));
+            should_cancel = ui.button(im_str!("Cancel"), [0.0, 0.0]);
             ui.same_line(0.0);
-            should_load = ui.button(im_str!("Load"), (0.0,0.0));
+            should_load = ui.button(im_str!("Load"), [0.0,0.0]);
             ui.same_line(400.0);
-            new = ui.button(im_str!("New"), (0.0,0.0));
+            new = ui.button(im_str!("New"), [0.0,0.0]);
           });
         
         if new {
@@ -573,16 +573,16 @@ impl EditorScreen {
         imstr_scene_name.push_str(&self.scene_name);
         
         ui.window(im_str!("Scene Details"))
-          .size((250.0, 60.0), ImGuiCond::FirstUseEver)
-          .position((0.0, 55.0), ImGuiCond::FirstUseEver)
+          .size([250.0, 60.0], Condition::Appearing)
+          .position([0.0, 55.0], Condition::Appearing)
           .always_auto_resize(true)
           .build( || {
             ui.text("Scene name:");
             ui.same_line(0.0);
             ui.push_item_width(150.0);
             ui.input_text(im_str!(""), &mut imstr_scene_name).build();
-            ui.pop_item_width();
-             if ui.button(im_str!("Delete Scene"), (0.0, 0.0)) {
+            ui.push_item_width(0.0);
+             if ui.button(im_str!("Delete Scene"), [0.0, 0.0]) {
                self.world_objects.clear();
                self.placing_height = 0.0;
                self.object_being_placed = None;
@@ -607,23 +607,23 @@ impl EditorScreen {
       
       if self.windows.world_objects {
         ui.window(im_str!("World Objects"))
-          .size((200.0, 400.0), ImGuiCond::FirstUseEver)
-          .position((0.0, 140.0), ImGuiCond::FirstUseEver)
+          .size([200.0, 400.0], Condition::Appearing)
+          .position([0.0, 140.0], Condition::Appearing)
           .build(|| {
             ui.text("None");
             ui.same_line(0.0);
-            ui.radio_button(im_str!("##{}", 0), &mut self.object_selected, 0);
+            ui.radio_button(&im_str!("##0"), &mut self.object_selected, 0);
             ui.text("Placing New");
             ui.same_line(0.0);
-            ui.radio_button(im_str!("Key 1##{}", 1), &mut self.object_selected, 1);
+            ui.radio_button(im_str!("Key 1##1"), &mut self.object_selected, 1);
             let mut should_delete_object = false;
             for i in 0..self.world_objects.len() {
               ui.text(im_str!("{}: {}", self.world_objects[i].id(), self.world_objects[i].name()));
               ui.same_line(0.0);
-              ui.radio_button(im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
+              ui.radio_button(&im_str!("##{}", i+2), &mut self.object_selected, i as i32+2);
               if self.object_selected == i as i32 +2 {
                 ui.same_line(0.0);
-                should_delete_object = ui.button(im_str!("Delete"), (0.0,0.0));
+                should_delete_object = ui.button(im_str!("Delete"), [0.0,0.0]);
               }
             }
             
@@ -640,24 +640,24 @@ impl EditorScreen {
         
         let window_width = 200.0;
         ui.window(im_str!("Model List ./Models/*"))
-          .position((self.data.window_dim.x-window_width*1.1, 32.0), ImGuiCond::FirstUseEver)
-          .size((window_width, 400.0), ImGuiCond::FirstUseEver)
+          .position([self.data.window_dim.x-window_width*1.1, 32.0], Condition::Appearing)
+          .size([window_width, 400.0], Condition::Appearing)
           .build(|| {
-            if ui.button(im_str!("Load All"), (0.0, 0.0)) {
+            if ui.button(im_str!("Load All"), [0.0, 0.0]) {
               should_load_all = true;
             }
-            let (size_x, size_y) = ui.get_content_region_avail();//get_window_size();
-            ui.child_frame(im_str!("child frame"), (size_x, size_y))
+            let [size_x, size_y] = ui.get_content_region_avail();//get_window_size();
+            ui.child_frame(im_str!("child frame"), [size_x, size_y])
               .show_borders(true)
               .build(|| {
                 for i in 0..self.known_models.len() {
-                  let mut model_loaded = self.known_models[i].2;
+                  let _model_loaded = self.known_models[i].2;
                   ui.text(im_str!("{}", self.known_models[i].0));
                   
                   //ui.checkbox(im_str!("##{}", i), &mut model_loaded);
                   if !self.known_models[i].2 {
                     ui.same_line(0.0);
-                    if ui.button(im_str!("Load##{}", i), (0.0, 0.0)) {
+                    if ui.button(&im_str!("Load##{}", i), [0.0, 0.0]) {
                       let reference = self.known_models[i].0.to_string();
                       let location = self.known_models[i].1.to_string();
                       self.mut_data().models_to_load.push((reference, location));
@@ -686,15 +686,15 @@ impl EditorScreen {
       
       if self.windows.loaded_models {
         ui.window(im_str!("Loaded Models"))
-          .position((0.0, 540.0), ImGuiCond::FirstUseEver)
-          .size((200.0, 400.0), ImGuiCond::FirstUseEver)
+          .position([0.0, 540.0], Condition::Appearing)
+          .size([200.0, 400.0], Condition::Appearing)
           //.always_auto_resize(true)
         .build(|| {
           let old_selection = self.selected_model;
           for i in 0..self.data().model_sizes.len() {
             let (reference, _) = self.data().model_sizes[i].clone();
             let name = (reference.to_string()).to_owned();
-            ui.radio_button(im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
+            ui.radio_button(&im_str!("{}##{}",name,i), &mut self.selected_model, i as i32);
           }
           if old_selection != self.selected_model {
             if self.object_being_placed.is_some() {
@@ -707,13 +707,13 @@ impl EditorScreen {
       if self.windows.camera_options {
         ui.window(im_str!("Game Camera"))
           .always_auto_resize(true)
-          .position((self.data.window_dim.x - 500.0, 25.0), ImGuiCond::FirstUseEver)
+          .position([self.data.window_dim.x - 500.0, 25.0], Condition::Appearing)
           .build(|| {
              ui.text("Camera Type:");
              ui.same_line(0.0);
              ui.push_item_width(150.0);
              ui.combo(im_str!(""), &mut self.game_options.camera_type, &[im_str!("First Person"), im_str!("Orbiting")], -1);
-             ui.pop_item_width();
+             ui.push_item_width(0.0);
              
              match self.game_options.camera_type {
                0 => {
@@ -744,16 +744,16 @@ impl EditorScreen {
                  }
                  
                  let items: Vec<_> = objects.iter().map(|p| 
-                   p.as_ref()
+                   p//.as_ref()
                  ).collect();
                  ui.push_item_width(190.0);
                  ui.combo(im_str!("##"), &mut self.game_options.camera_target, &items[..], -1);
-                 ui.pop_item_width();
+                 ui.push_item_width(0.0);
                  ui.text("Distance:");
                  ui.same_line(0.0);
                  ui.push_item_width(100.0);
                  ui.input_float(im_str!("##dist"), &mut self.game_options.camera_distance).build();
-                 ui.pop_item_width();
+                 ui.push_item_width(0.0);
                  ui.text("Horizontal Rotation");
                  ui.same_line(0.0);
                  ui.checkbox(im_str!("##horz"), &mut self.game_options.camera_horizontal_rotation);
@@ -768,8 +768,8 @@ impl EditorScreen {
       
        ui.window(im_str!("Instanced Options"))
             .always_auto_resize(true)
-            .size((200.0, 200.0), ImGuiCond::FirstUseEver)
-            .position((self.data.window_dim.x - 500.0, 200.0), ImGuiCond::FirstUseEver)
+            .size([200.0, 200.0], Condition::Appearing)
+            .position([self.data.window_dim.x - 500.0, 200.0], Condition::Appearing)
             .build(|| {
                             
               ui.text("Existing Buffers");
@@ -781,7 +781,7 @@ impl EditorScreen {
                 
                 ui.text(&self.instanced_buffers[i-offset].to_string());
                 ui.same_line(0.0);
-                if ui.button(im_str!("Remove##{}",i), (0.0, 0.0)) {
+                if ui.button(&im_str!("Remove##{:?}",i), [0.0, 0.0]) {
                   let buffer = self.instanced_buffers.remove(i-offset);
                   offset += 1;
                   for objects in &mut self.world_objects {
@@ -808,31 +808,30 @@ impl EditorScreen {
                   }
                 }
                 
-                let items: Vec<_> = items.iter().map(|p| 
-                    p.as_ref()
-                ).collect();
+                let items: Vec<&ImString> = items.iter().map(|p| 
+                    p//.as_ref()
+                ).collect::<Vec<&ImString>>();
                 
-                ui.combo(im_str!("##"), &mut self.options.instanced_option, 
-                  &items[..], -1);
+                ui.combo(im_str!("##"), &mut self.options.instanced_option, &items[..], -1);
                 ui.same_line(0.0);
                 if self.options.instanced_option > items.len() as i32-1 {
                   self.options.instanced_option = items.len() as i32-1;
                 }
                 
-                if ui.button(im_str!("Add Buffer"), (0.0, 0.0)) {
+                if ui.button(im_str!("Add Buffer"), [0.0, 0.0]) {
                   // Actually add buffer
-                  
-                  self.instanced_buffers_added.push(items[self.options.instanced_option as usize].to_str().to_string());
+                  let buffer = items[self.options.instanced_option as usize].to_str();
+                  self.instanced_buffers_added.push(buffer.to_string());
                 }
               }
       });
       
       if self.windows.saved {
         ui.window(im_str!("Scene Saved!"))
-          .position((self.data.window_dim.x*0.5, self.data.window_dim.y*0.5), ImGuiCond::FirstUseEver)
-          .size((200.0, 100.0), ImGuiCond::FirstUseEver)
+          .position([self.data.window_dim.x*0.5, self.data.window_dim.y*0.5], Condition::Appearing)
+          .size([200.0, 100.0], Condition::Appearing)
           .build(|| {
-            if ui.button(im_str!("Ok"), (0.0, 0.0)) {
+            if ui.button(im_str!("Ok"), [0.0, 0.0]) {
               self.windows.saved = false;
             }
           });
