@@ -1,6 +1,8 @@
 ![Build status](https://travis-ci.com/lilith645/Maat-Editor3D.svg?token=nw7eyDYfjBcSaxj1G3h7&branch=master)
 # 3D editor for maat engine
 
+### No longer maintained, a better option will be built later with new Maat-Graphics Library.
+
 ### Windows Specific Setup
 ### MacOs Specific Setup
 ### Linux Specific Setup
